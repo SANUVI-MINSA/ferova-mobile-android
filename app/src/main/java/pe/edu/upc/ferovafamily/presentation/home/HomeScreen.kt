@@ -38,6 +38,7 @@ private val DisabledGray = Color(0xFFB8B8B8)
 @Composable
 fun HomeScreen(
     onNavigateToAchievements: () -> Unit = {},
+    onNavigateToCreatePatient: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     Scaffold(
@@ -98,7 +99,7 @@ fun HomeScreen(
             // ── Mis Niños ──
             SectionTitle("Mis Niños")
             Spacer(Modifier.height(8.dp))
-            ChildrenRow()
+            ChildrenRow(onClick = onNavigateToCreatePatient)
 
             Spacer(Modifier.height(16.dp))
 
@@ -164,7 +165,9 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun ChildrenRow() {
+private fun ChildrenRow(
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Cream),
@@ -180,9 +183,7 @@ private fun ChildrenRow() {
         ) {
             ChildAvatar(name = "Mateo", isSelected = true)
             ChildAvatar(name = "Lucia", isSelected = false)
-            Box(modifier = Modifier.clickable(onClick = {})) {
-                AddChildButton()
-            }
+            AddChildButton(onClick = onClick)
         }
     }
 }
@@ -219,8 +220,9 @@ private fun ChildAvatar(name: String, isSelected: Boolean) {
 }
 
 @Composable
-private fun AddChildButton() {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun AddChildButton(onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }) {
         Box(
             modifier = Modifier
                 .size(56.dp)
