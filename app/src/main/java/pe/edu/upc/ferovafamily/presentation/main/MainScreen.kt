@@ -37,6 +37,7 @@ import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentConf
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCenterDetailScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCentersMapScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.TimeSlotSelectionScreen
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryRoutes
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -98,6 +99,9 @@ fun MainScreen() {
                 HomeScreen(
                     onNavigateToAchievements = {
                         navController.navigate(ProgressRoutes.PROGRESS)
+                    },
+                    onNavigateToNewMeal = {
+                        navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
                     onLogout = {
                         // TODO: cuando lo implemente el equipo, regresar al login
@@ -237,6 +241,17 @@ fun MainScreen() {
                     }
                 )
             }
+
+            // ──────────── SUBPANTALLAS: DIARIO NUTRICIONAL ────────────
+
+            composable(NutritionalDiaryRoutes.NEW_MEAL) {
+                PlaceholderScreen("New meal")
+            }
+
+            composable(NutritionalDiaryRoutes.HISTORY){
+                PlaceholderScreen("Diary history")
+            }
+
             // ──────────── SUBPANTALLAS: CITAS Y POSTAS ────────────
 
             composable(AppointmentsRoutes.HEALTH_CENTERS_MAP) {
