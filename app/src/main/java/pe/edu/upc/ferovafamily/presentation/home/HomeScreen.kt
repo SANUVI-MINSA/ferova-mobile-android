@@ -37,6 +37,7 @@ private val DisabledGray = Color(0xFFB8B8B8)
 @Composable
 fun HomeScreen(
     onNavigateToAchievements: () -> Unit = {},
+    onNavigateToNewMeal: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     Scaffold(
@@ -126,7 +127,7 @@ fun HomeScreen(
                 title = "Nurva entrada de alimento",
                 subtitle = "Registrate lo que comistes hoy",
                 enabled = false,
-                onClick = { /* TODO: compañero/a */ }
+                onClick = onNavigateToNewMeal
             )
             Spacer(Modifier.height(10.dp))
             QuickAccessCard(
