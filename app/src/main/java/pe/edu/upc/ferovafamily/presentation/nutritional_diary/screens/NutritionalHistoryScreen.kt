@@ -4,12 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
-fun NewNutritionalMealScreen() {
+fun NutritionalHistoryScreen() {
 
 }
 
 @Preview
 @Composable
-fun NewMealPreview() {
-    NewNutritionalMealScreen()
+fun HistoryPreview() {
+    NutritionalHistoryScreen()
 }
