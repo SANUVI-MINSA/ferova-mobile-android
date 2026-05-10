@@ -180,7 +180,8 @@ fun MainScreen() {
 
             composable (route= PatientManagementRoutes.CREATE_PATIENT) {
                 CreatePatientScreen(
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onRegisterChild = {navController.popBackStack()}
                 )
             }
 
