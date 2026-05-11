@@ -1,6 +1,5 @@
 package pe.edu.upc.ferovafamily.presentation.nutritional_diary.components
 
-import android.graphics.fonts.FontStyle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,9 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import pe.edu.upc.ferovafamily.R
 import pe.edu.upc.ferovafamily.presentation.theme.Crimson
 
