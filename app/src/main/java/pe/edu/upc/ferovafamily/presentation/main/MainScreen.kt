@@ -42,6 +42,8 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryRo
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NewNutritionalMealScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalDiaryScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalHistoryScreen
+import pe.edu.upc.ferovafamily.presentation.patient_management.PatientManagementRoutes
+import pe.edu.upc.ferovafamily.presentation.patient_management.screens.CreatePatientScreen
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)

@@ -39,6 +39,8 @@ private val DisabledGray = Color(0xFFB8B8B8)
 fun HomeScreen(
     onNavigateToAchievements: () -> Unit = {},
     onNavigateToNewMeal: () -> Unit = {},
+    onNavigateToCreatePatient: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     Scaffold(
