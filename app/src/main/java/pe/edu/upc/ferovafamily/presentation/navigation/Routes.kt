@@ -19,4 +19,7 @@ object RecoveryPasswordRoute
 object VerificationRoute
 
 @Serializable
+object TreatmentTrackingRoute
+
+@Serializable
 object NewPasswordRoute
