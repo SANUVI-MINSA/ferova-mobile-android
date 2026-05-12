@@ -2,6 +2,7 @@ package pe.edu.upc.ferovafamily.presentation.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -37,7 +38,7 @@ private val DisabledGray = Color(0xFFB8B8B8)
 @Composable
 fun HomeScreen(
     onNavigateToAchievements: () -> Unit = {},
-    onNavigateToHistory: () -> Unit = {}, // Nueva navegación para el historial
+    onNavigateToCreatePatient: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     Scaffold(
@@ -98,7 +99,7 @@ fun HomeScreen(
             // ── Mis Niños ──
             SectionTitle("Mis Niños")
             Spacer(Modifier.height(8.dp))
-            ChildrenRow()
+            ChildrenRow(onClick = onNavigateToCreatePatient)
 
             Spacer(Modifier.height(16.dp))
 
@@ -164,7 +165,9 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun ChildrenRow() {
+private fun ChildrenRow(
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Cream),
@@ -178,9 +181,9 @@ private fun ChildrenRow() {
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ChildAvatar(name = "Lucia", isSelected = true)
-            ChildAvatar(name = "Mateo", isSelected = false)
-            AddChildButton()
+            ChildAvatar(name = "Mateo", isSelected = true)
+            ChildAvatar(name = "Lucia", isSelected = false)
+            AddChildButton(onClick = onClick)
         }
     }
 }
@@ -217,8 +220,9 @@ private fun ChildAvatar(name: String, isSelected: Boolean) {
 }
 
 @Composable
-private fun AddChildButton() {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun AddChildButton(onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }) {
         Box(
             modifier = Modifier
                 .size(56.dp)

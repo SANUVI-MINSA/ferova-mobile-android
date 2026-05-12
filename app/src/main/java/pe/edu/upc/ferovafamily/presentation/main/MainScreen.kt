@@ -37,6 +37,8 @@ import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentConf
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCenterDetailScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCentersMapScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.TimeSlotSelectionScreen
+import pe.edu.upc.ferovafamily.presentation.patient_management.PatientManagementRoutes
+import pe.edu.upc.ferovafamily.presentation.patient_management.screens.CreatePatientScreen
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -102,7 +104,9 @@ fun MainScreen(
                     onNavigateToAchievements = {
                         navController.navigate(ProgressRoutes.PROGRESS)
                     },
-                    onNavigateToHistory = onNavigateToHistory, // <--- PASAMOS LA NAVEGACIÓN AQUÍ
+                    onNavigateToCreatePatient = {
+                        navController.navigate(PatientManagementRoutes.CREATE_PATIENT)
+                    },
                     onLogout = {
                         // TODO: cuando lo implemente el equipo, regresar al login
                     }
@@ -172,6 +176,15 @@ fun MainScreen(
                 ChatScreen(
                     consultationId = consultationId,
                     onBack = { navController.popBackStack() }
+                )
+            }
+
+            // ──────────── SUBPANTALLA: CREACION DE PACIENTE ────────────
+
+            composable (route= PatientManagementRoutes.CREATE_PATIENT) {
+                CreatePatientScreen(
+                    onBack = { navController.popBackStack() },
+                    onRegisterChild = {navController.popBackStack()}
                 )
             }
 
