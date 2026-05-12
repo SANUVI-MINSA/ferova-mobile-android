@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.main
 
+import android.R.attr.type
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentBookingScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -118,8 +119,8 @@ fun MainScreen() {
                     onNewFoodEntry = {
                         navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
-                    onSeeFoodHistory = {
-                        navController.navigate(NutritionalDiaryRoutes.HISTORY)
+                    onSeeFoodHistory = { selectedPatient ->
+                        navController.navigate("diary_history/$selectedPatient")
                     }
                 )
             }
@@ -261,8 +262,15 @@ fun MainScreen() {
                 )
             }
 
-            composable(NutritionalDiaryRoutes.HISTORY){
-                NutritionalHistoryScreen()
+            composable("diary_history/{patientName}",
+                arguments = listOf(navArgument("patientName") {type = NavType.StringType}))
+            { backStackEntry ->
+                val patientName = backStackEntry.arguments?.getString("patientName")?: ""
+                NutritionalHistoryScreen(
+                    selectedPatient = patientName,
+                    onBack = {
+                        navController.popBackStack()
+                    })
             }
 
             // ──────────── SUBPANTALLAS: CITAS Y POSTAS ────────────

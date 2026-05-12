@@ -35,7 +35,7 @@ import pe.edu.upc.ferovafamily.presentation.theme.White
 @Composable
 fun NutritionalDiaryScreen(
     onNewFoodEntry: () -> Unit = {},
-    onSeeFoodHistory: () -> Unit = {},
+    onSeeFoodHistory: (String) -> Unit = {},
 ) {
     val selectedPatient = remember {
         mutableStateOf("Mateo")
@@ -94,7 +94,7 @@ fun NutritionalDiaryScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            ActionButtons(onNewFoodEntry, onSeeFoodHistory)
+            ActionButtons(onNewFoodEntry, { onSeeFoodHistory(selectedPatient.value) })
 
             Spacer(Modifier.height(24.dp))
 
