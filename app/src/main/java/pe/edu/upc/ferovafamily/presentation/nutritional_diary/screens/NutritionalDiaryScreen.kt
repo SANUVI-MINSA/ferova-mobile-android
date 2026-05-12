@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.ActionButtons
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.IronAbsorptionCard
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.TipCard
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.TodayFoodEntriesList
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodDatabase
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodEntryDatabase
 import pe.edu.upc.ferovafamily.presentation.theme.Crimson
 
@@ -37,14 +39,14 @@ fun NutritionalDiaryScreen(
     val selectedPatient = remember {
         mutableStateOf("Mateo")
     }
-    val patients = listOf("Mateo", "Lucia", "Lucia", "Lucia", "Lucia")
+    val patients = listOf("Mateo", "Lucia")
     val foodEntries = FoodEntryDatabase.foodEntries
+    val foodItems = FoodDatabase.foodItems
     val ironAbsorbed = FoodEntryDatabase.foodEntries
         .filter { it.patientName == selectedPatient.value }
         .sumOf { it.ironContributed }
     val today = "2026-05-11"
-    val todayFoodEntries = FoodEntryDatabase.foodEntries
-        .filter {it.registeredAt == today }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -81,7 +83,16 @@ fun NutritionalDiaryScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            ActionButtons(onNewFoodEntry,onSeeFoodHistory)
+            TodayFoodEntriesList(
+                patientName = selectedPatient.value,
+                date = today,
+                foodItems = foodItems,
+                foodEntries = foodEntries
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            ActionButtons(onNewFoodEntry, onSeeFoodHistory)
 
             Spacer(Modifier.height(24.dp))
 
@@ -101,6 +112,9 @@ fun NutritionalDiaryScreen(
                     lineHeight = 20.sp
                 ),
             )
+
+            Spacer(Modifier.height(24.dp))
+
         }
     }
 }

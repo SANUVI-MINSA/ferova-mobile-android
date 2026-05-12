@@ -8,7 +8,7 @@ data class FoodItem(
     val category: String
 )
 
-data class FoodEntry (
+data class FoodEntry(
     val foodItemId: Int,
     val patientName: String,
     var quantity: Int,
@@ -123,7 +123,7 @@ object FoodDatabase {
             nutrientContent = Pair(1, "No-Hemo"),
             isInhibitor = false,
             category = "FRUIT"
-        )
+        ),
     )
 }
 
@@ -131,86 +131,165 @@ object FoodEntryDatabase {
     val foodEntries = listOf(
         // Mateo (5 entries)
         FoodEntry(
-            foodItemId = 1,   // Hígado de res - 6mg - Hemo
+            foodItemId = 1,
             patientName = "Mateo",
             quantity = 150,
-            unit = "miligramos",
+            unit = "gramos",
             ironContributed = 150 * 6 * 0.25 / 100.0,  // 2.25
             registeredAt = "2026-05-01"
         ),
         FoodEntry(
-            foodItemId = 6,   // Lentejas - 3mg - No-Hemo
+            foodItemId = 6,
             patientName = "Mateo",
             quantity = 200,
-            unit = "miligramos",
+            unit = "gramos",
             ironContributed = 200 * 3 * 0.05 / 100.0,  // 0.30
             registeredAt = "2026-05-03"
         ),
         FoodEntry(
-            foodItemId = 5,   // Sardinas - 2mg - Hemo
+            foodItemId = 5,
             patientName = "Mateo",
             quantity = 100,
-            unit = "miligramos",
-            ironContributed = 100 * 2 * 0.25 / 100.0,  // 0.50
+            unit = "gramos",
+            ironContributed = 100 * 2 * 0.25 / 100.0,
             registeredAt = "2026-05-06"
         ),
         FoodEntry(
-            foodItemId = 7,   // Espinaca - 3mg - No-Hemo
+            foodItemId = 7,
             patientName = "Mateo",
             quantity = 120,
-            unit = "miligramos",
-            ironContributed = 120 * 3 * 0.05 / 100.0,  // 0.18
+            unit = "gramos",
+            ironContributed = 120 * 3 * 0.05 / 100.0,
             registeredAt = "2026-05-09"
         ),
         FoodEntry(
-            foodItemId = 2,   // Carne de res - 3mg - Hemo
+            foodItemId = 2,
             patientName = "Mateo",
             quantity = 180,
-            unit = "miligramos",
-            ironContributed = 180 * 3 * 0.25 / 100.0,  // 1.35
+            unit = "gramos",
+            ironContributed = 180 * 3 * 0.25 / 100.0,
             registeredAt = "2026-05-11"
         ),
-
-        // Lucia (5 entries)
         FoodEntry(
-            foodItemId = 8,   // Garbanzos - 3mg - No-Hemo
+            foodItemId = 8,
             patientName = "Lucia",
             quantity = 150,
-            unit = "miligramos",
-            ironContributed = 150 * 3 * 0.05 / 100.0,  // 0.225
+            unit = "gramos",
+            ironContributed = 150 * 3 * 0.05 / 100.0,
             registeredAt = "2026-05-02"
         ),
         FoodEntry(
-            foodItemId = 4,   // Atún - 1mg - Hemo
+            foodItemId = 4,
             patientName = "Lucia",
             quantity = 100,
             unit = "mililitros",
-            ironContributed = 100 * 1 * 0.25 / 100.0,  // 0.25
+            ironContributed = 100 * 1 * 0.25 / 100.0,
             registeredAt = "2026-05-04"
         ),
         FoodEntry(
-            foodItemId = 10,  // Quinoa - 3mg - No-Hemo
+            foodItemId = 10,
             patientName = "Lucia",
             quantity = 130,
-            unit = "miligramos",
-            ironContributed = 130 * 3 * 0.05 / 100.0,  // 0.195
+            unit = "gramos",
+            ironContributed = 130 * 3 * 0.05 / 100.0,
             registeredAt = "2026-05-07"
         ),
         FoodEntry(
-            foodItemId = 12,  // Leche - 0mg - Inhibidor
+            foodItemId = 12,
             patientName = "Lucia",
             quantity = 200,
             unit = "mililitros",
-            ironContributed = 0.0,                       // inhibidor, no contribuye
+            ironContributed = 0.0,
             registeredAt = "2026-05-08"
         ),
         FoodEntry(
-            foodItemId = 3,   // Pollo - 1mg - Hemo
+            foodItemId = 3,
             patientName = "Lucia",
             quantity = 160,
-            unit = "miligramos",
-            ironContributed = 160 * 1 * 0.25 / 100.0,  // 0.40
+            unit = "gramos",
+            ironContributed = 160 * 1 * 0.25 / 100.0,
             registeredAt = "2026-05-11"
-        )
+        ),
+        FoodEntry(
+            foodItemId = 9,
+            patientName = "Mateo",
+            quantity = 100,
+            unit = "gramos",
+            ironContributed = 100 * 3 * 0.05 / 100.0,
+            registeredAt = "2026-05-11"
+        ),
+        FoodEntry(
+            foodItemId = 13,
+            patientName = "Mateo",
+            quantity = 200,
+            unit = "mililitros",
+            ironContributed = 0.0,
+            registeredAt = "2026-05-11"
+        ),
+        FoodEntry(
+            foodItemId = 11,
+            patientName = "Mateo",
+            quantity = 80,
+            unit = "gramos",
+            ironContributed = 80 * 2 * 0.05 / 100.0,
+            registeredAt = "2026-05-04"
+        ),
+        FoodEntry(
+            foodItemId = 15,
+            patientName = "Mateo",
+            quantity = 150,
+            unit = "gramos",
+            ironContributed = 150 * 1 * 0.05 / 100.0,
+            registeredAt = "2026-05-07"
+        ),
+        FoodEntry(
+            foodItemId = 4,
+            patientName = "Mateo",
+            quantity = 120,
+            unit = "gramos",
+            ironContributed = 120 * 1 * 0.25 / 100.0,
+            registeredAt = "2026-05-08"
+        ),
+
+        FoodEntry(
+            foodItemId = 14,
+            patientName = "Lucia",
+            quantity = 250,
+            unit = "mililitros",
+            ironContributed = 0.0,
+            registeredAt = "2026-05-11"
+        ),
+        FoodEntry(
+            foodItemId = 7,
+            patientName = "Lucia",
+            quantity = 100,
+            unit = "gramos",
+            ironContributed = 100 * 3 * 0.05 / 100.0,
+            registeredAt = "2026-05-11"
+        ),
+        FoodEntry(
+            foodItemId = 9,
+            patientName = "Lucia",
+            quantity = 150,
+            unit = "gramos",
+            ironContributed = 150 * 3 * 0.05 / 100.0,
+            registeredAt = "2026-05-05"
+        ),
+        FoodEntry(
+            foodItemId = 13,
+            patientName = "Lucia",
+            quantity = 150,
+            unit = "mililitros",
+            ironContributed = 0.0,
+            registeredAt = "2026-05-06"
+        ),
+        FoodEntry(
+            foodItemId = 15,
+            patientName = "Lucia",
+            quantity = 200,
+            unit = "gramos",
+            ironContributed = 200 * 1 * 0.05 / 100.0,
+            registeredAt = "2026-05-09"
+        ),
     )
 }
