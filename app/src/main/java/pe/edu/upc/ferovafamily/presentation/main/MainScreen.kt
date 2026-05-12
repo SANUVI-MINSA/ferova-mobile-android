@@ -42,7 +42,10 @@ private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    // Agregamos este parámetro para comunicarnos con el NavGraph principal
+    onNavigateToHistory: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -99,6 +102,7 @@ fun MainScreen() {
                     onNavigateToAchievements = {
                         navController.navigate(ProgressRoutes.PROGRESS)
                     },
+                    onNavigateToHistory = onNavigateToHistory, // <--- PASAMOS LA NAVEGACIÓN AQUÍ
                     onLogout = {
                         // TODO: cuando lo implemente el equipo, regresar al login
                     }
