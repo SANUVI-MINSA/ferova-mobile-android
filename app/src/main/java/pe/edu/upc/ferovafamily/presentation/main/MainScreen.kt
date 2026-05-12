@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.main
 
+import android.R.attr.type
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentBookingScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,8 +38,10 @@ import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentConf
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCenterDetailScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCentersMapScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.TimeSlotSelectionScreen
-import pe.edu.upc.ferovafamily.presentation.patient_management.PatientManagementRoutes
-import pe.edu.upc.ferovafamily.presentation.patient_management.screens.CreatePatientScreen
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryRoutes
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NewNutritionalMealScreen
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalDiaryScreen
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalHistoryScreen
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -104,8 +107,8 @@ fun MainScreen(
                     onNavigateToAchievements = {
                         navController.navigate(ProgressRoutes.PROGRESS)
                     },
-                    onNavigateToCreatePatient = {
-                        navController.navigate(PatientManagementRoutes.CREATE_PATIENT)
+                    onNavigateToNewMeal = {
+                        navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
                     onLogout = {
                         // TODO: cuando lo implemente el equipo, regresar al login
@@ -115,7 +118,14 @@ fun MainScreen(
 
             // Tab: Diario (placeholder)
             composable(MainRoutes.DIARY) {
-                PlaceholderScreen("Diario")
+                NutritionalDiaryScreen (
+                    onNewFoodEntry = {
+                        navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
+                    },
+                    onSeeFoodHistory = { selectedPatient ->
+                        navController.navigate("diary_history/$selectedPatient")
+                    }
+                )
             }
 
             // Tab: Citas (placeholder)
@@ -254,6 +264,27 @@ fun MainScreen(
                     }
                 )
             }
+
+            // ──────────── SUBPANTALLAS: DIARIO NUTRICIONAL ────────────
+
+            composable(NutritionalDiaryRoutes.NEW_MEAL) {
+                NewNutritionalMealScreen(
+                    onBack = {navController.popBackStack()},
+                    onRegisterMeal = {navController.popBackStack()}
+                )
+            }
+
+            composable("diary_history/{patientName}",
+                arguments = listOf(navArgument("patientName") {type = NavType.StringType}))
+            { backStackEntry ->
+                val patientName = backStackEntry.arguments?.getString("patientName")?: ""
+                NutritionalHistoryScreen(
+                    selectedPatient = patientName,
+                    onBack = {
+                        navController.popBackStack()
+                    })
+            }
+
             // ──────────── SUBPANTALLAS: CITAS Y POSTAS ────────────
 
             composable(AppointmentsRoutes.HEALTH_CENTERS_MAP) {
