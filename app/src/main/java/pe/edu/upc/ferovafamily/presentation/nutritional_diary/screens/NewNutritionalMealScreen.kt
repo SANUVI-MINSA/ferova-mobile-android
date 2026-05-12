@@ -5,10 +5,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import pe.edu.upc.ferovafamily.R
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.MealCatalog
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.MealSearch
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.RegisterMealDialog
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodDatabase
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodItem
 import pe.edu.upc.ferovafamily.presentation.theme.CrimsonDark
@@ -88,6 +85,19 @@ fun NewNutritionalMealScreen(
 
             MealCatalog(
                 foodItems = foodItems,
+                onMealClick = {
+                    selectedMeal.value = it
+                }
+            )
+        }
+        selectedMeal.value?.let { item ->
+            RegisterMealDialog(
+                foodItem = item,
+                onDismiss = { selectedMeal.value = null },
+                onRegister = { quantity ->
+                    onRegisterMeal()
+                    selectedMeal.value = null
+                }
             )
         }
     }

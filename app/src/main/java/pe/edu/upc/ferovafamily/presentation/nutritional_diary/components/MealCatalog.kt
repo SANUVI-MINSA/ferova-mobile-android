@@ -33,8 +33,9 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodItem
 
 @Composable
 fun MealCatalog(
+    modifier: Modifier = Modifier,
     foodItems: List<FoodItem>,
-    modifier: Modifier = Modifier
+    onMealClick: (FoodItem) -> Unit = {},
 ) {
     val categories = listOf(
         "MEAT" to "Carnes",
@@ -84,7 +85,8 @@ fun MealCatalog(
 
         ) {
             filteredItems.forEach { foodItem ->
-                FoodItemCard(foodItem = foodItem)
+                FoodItemCard(foodItem = foodItem,
+                    onClickCard = onMealClick)
             }
         }
     }
@@ -119,13 +121,13 @@ fun CategoryChip(
 fun FoodItemCard(
     foodItem: FoodItem,
     modifier: Modifier = Modifier,
-    onClickCard: () -> Unit = {}
+    onClickCard: (FoodItem) -> Unit = {}
 ) {
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClickCard),
+            .clickable { onClickCard(foodItem) },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
