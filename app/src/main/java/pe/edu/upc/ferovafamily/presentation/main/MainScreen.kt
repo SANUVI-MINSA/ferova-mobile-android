@@ -255,7 +255,10 @@ fun MainScreen() {
             // ──────────── SUBPANTALLAS: DIARIO NUTRICIONAL ────────────
 
             composable(NutritionalDiaryRoutes.NEW_MEAL) {
-                NewNutritionalMealScreen()
+                NewNutritionalMealScreen(
+                    onBack = {navController.popBackStack()},
+                    onRegisterMeal = {navController.popBackStack()}
+                )
             }
 
             composable(NutritionalDiaryRoutes.HISTORY){

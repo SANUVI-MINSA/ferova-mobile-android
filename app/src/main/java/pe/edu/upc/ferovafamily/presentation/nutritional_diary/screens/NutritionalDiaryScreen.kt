@@ -29,6 +29,7 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.TodayFo
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodDatabase
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodEntryDatabase
 import pe.edu.upc.ferovafamily.presentation.theme.Crimson
+import pe.edu.upc.ferovafamily.presentation.theme.White
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +49,7 @@ fun NutritionalDiaryScreen(
     val today = "2026-05-11"
 
     Scaffold(
+        containerColor = White,
         topBar = {
             TopAppBar(
                 modifier = Modifier
