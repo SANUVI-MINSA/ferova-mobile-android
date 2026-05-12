@@ -38,6 +38,7 @@ import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCenterDet
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCentersMapScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.TimeSlotSelectionScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryRoutes
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalDiaryScreen
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -111,7 +112,9 @@ fun MainScreen() {
 
             // Tab: Diario (placeholder)
             composable(MainRoutes.DIARY) {
-                PlaceholderScreen("Diario")
+                NutritionalDiaryScreen (
+
+                )
             }
 
             // Tab: Citas (placeholder)
