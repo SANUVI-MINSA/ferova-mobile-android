@@ -47,7 +47,10 @@ private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    // Agregamos este parámetro para comunicarnos con el NavGraph principal
+    onNavigateToHistory: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -183,6 +186,15 @@ fun MainScreen() {
                 ChatScreen(
                     consultationId = consultationId,
                     onBack = { navController.popBackStack() }
+                )
+            }
+
+            // ──────────── SUBPANTALLA: CREACION DE PACIENTE ────────────
+
+            composable (route= PatientManagementRoutes.CREATE_PATIENT) {
+                CreatePatientScreen(
+                    onBack = { navController.popBackStack() },
+                    onRegisterChild = {navController.popBackStack()}
                 )
             }
 

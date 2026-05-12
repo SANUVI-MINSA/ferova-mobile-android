@@ -2,6 +2,7 @@ package pe.edu.upc.ferovafamily.presentation.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -98,12 +99,12 @@ fun HomeScreen(
             // ── Mis Niños ──
             SectionTitle("Mis Niños")
             Spacer(Modifier.height(8.dp))
-            ChildrenRow()
+            ChildrenRow(onClick = onNavigateToCreatePatient)
 
             Spacer(Modifier.height(16.dp))
 
             // ── Dosis de hoy ──
-            DoseCard()
+            DoseCard(onViewHistory = onNavigateToHistory)
 
             Spacer(Modifier.height(16.dp))
 
@@ -124,8 +125,8 @@ fun HomeScreen(
 
             QuickAccessCard(
                 icon = Icons.Default.Restaurant,
-                title = "Nurva entrada de alimento",
-                subtitle = "Registrate lo que comistes hoy",
+                title = "Nueva entrada de alimento",
+                subtitle = "Registra lo que comiste hoy",
                 enabled = false,
                 onClick = onNavigateToNewMeal
             )
@@ -135,7 +136,7 @@ fun HomeScreen(
                 title = "Ver Postas Cercanas",
                 subtitle = "Encuentra tu centro de salud",
                 enabled = false,
-                onClick = { /* TODO: compañero/a */ }
+                onClick = { /* TODO */ }
             )
             Spacer(Modifier.height(10.dp))
             QuickAccessCard(
@@ -164,7 +165,9 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun ChildrenRow() {
+private fun ChildrenRow(
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Cream),
@@ -180,7 +183,7 @@ private fun ChildrenRow() {
         ) {
             ChildAvatar(name = "Mateo", isSelected = true)
             ChildAvatar(name = "Lucia", isSelected = false)
-            AddChildButton()
+            AddChildButton(onClick = onClick)
         }
     }
 }
@@ -217,8 +220,9 @@ private fun ChildAvatar(name: String, isSelected: Boolean) {
 }
 
 @Composable
-private fun AddChildButton() {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun AddChildButton(onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }) {
         Box(
             modifier = Modifier
                 .size(56.dp)
@@ -241,7 +245,7 @@ private fun AddChildButton() {
 }
 
 @Composable
-private fun DoseCard() {
+private fun DoseCard(onViewHistory: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Cream),
@@ -253,13 +257,27 @@ private fun DoseCard() {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Dosis de hoy",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.Gray,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Dosis de hoy",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray
+                    )
+                    TextButton(
+                        onClick = onViewHistory,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Text(
+                            text = "Ver Historial",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Crimson,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .size(36.dp)
@@ -281,12 +299,18 @@ private fun DoseCard() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                listOf("L", "M", "M", "J", "V", "S", "D").forEach { day ->
+                val days = listOf("L", "M", "M", "J", "V", "S", "D")
+                val completedDays = listOf("L", "M", "M")
+
+                days.forEach { day ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
                             modifier = Modifier
                                 .size(20.dp)
-                                .background(DisabledGray, CircleShape)
+                                .background(
+                                    if (day in completedDays) Crimson else DisabledGray,
+                                    CircleShape
+                                )
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
@@ -302,18 +326,26 @@ private fun DoseCard() {
             Spacer(Modifier.height(16.dp))
 
             Button(
-                onClick = { /* TODO: compañero/a */ },
+                onClick = { /* TODO */ },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = false,
+                enabled = true,
                 colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = DisabledGray,
-                    disabledContentColor = Color.White
+                    containerColor = Crimson,
+                    contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null)
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.White
+                )
                 Spacer(Modifier.width(8.dp))
-                Text("Confirmar Dosis", fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = "Confirmar Dosis",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
             }
         }
     }
