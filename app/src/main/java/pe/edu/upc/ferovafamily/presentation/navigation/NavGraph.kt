@@ -11,6 +11,8 @@ import pe.edu.upc.ferovafamily.presentation.main.MainScreen
 import pe.edu.upc.ferovafamily.presentation.shared.NewPasswordScreen
 import pe.edu.upc.ferovafamily.presentation.shared.RecoveryPasswordScreen
 import pe.edu.upc.ferovafamily.presentation.shared.VerificationScreen
+// Asegúrate de que estas rutas de importación coincidan con tu estructura
+import pe.edu.upc.ferovafamily.presentation.treatment_tracking.TreatmentTrackingScreen
 
 @Composable
 fun NavGraph() {
@@ -79,9 +81,20 @@ fun NavGraph() {
             )
         }
 
-        // Entrada al área principal con bottom bar (Inicio / Diario / Citas / Consultas)
         composable(MainRoutes.MAIN) {
-            MainScreen()
+            MainScreen(
+                onNavigateToHistory = {
+                    navController.navigate(TreatmentTrackingRoute)
+                }
+            )
+        }
+
+        composable<TreatmentTrackingRoute> {
+            TreatmentTrackingScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }
