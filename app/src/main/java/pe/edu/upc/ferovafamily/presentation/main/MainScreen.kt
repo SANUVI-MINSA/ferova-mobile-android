@@ -112,6 +112,9 @@ fun MainScreen(
                     onNavigateToNewMeal = {
                         navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
+                    onNavigateToCreatePatient = {
+                        navController.navigate(PatientManagementRoutes.CREATE_PATIENT)
+                    },
                     onLogout = {
                         // TODO: cuando lo implemente el equipo, regresar al login
                     }
