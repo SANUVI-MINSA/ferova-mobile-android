@@ -1,5 +1,7 @@
 package pe.edu.upc.ferovafamily.presentation.appointments.screens
 
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,44 +20,75 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
 
-private val Crimson = Color(0xFF8B1A1A)
-private val Cream = Color(0xFFFDF8F8)
-private val SoftPink = Color(0xFFF9E8E8)
+private val Crimson     = Color(0xFF8B1A1A)
+private val Cream       = Color(0xFFFDF8F8)
+private val SoftPink    = Color(0xFFF9E8E8)
 private val SuccessGreen = Color(0xFF4CAF50)
+
+// ── Mapa OpenStreetMap (sin API key, via embed URL) ──────────────────────────
+
+@Composable
+private fun OSMMapView(
+    modifier: Modifier = Modifier
+) {
+    // URL de embed de OpenStreetMap centrada en San Juan de Lurigancho, Lima
+    // bbox = oeste,sur,este,norte   marker = lat,lon
+    val mapUrl = "https://www.openstreetmap.org/export/embed.html" +
+            "?bbox=-77.05%2C-12.08%2C-76.95%2C-11.98" +
+            "&layer=mapnik" +
+            "&marker=-12.0250%2C-76.9990"
+
+    AndroidView(
+        factory = { ctx ->
+            WebView(ctx).apply {
+                webViewClient = WebViewClient()             // abre links en el mismo WebView
+                settings.apply {
+                    javaScriptEnabled    = true
+                    domStorageEnabled    = true
+                    loadWithOverviewMode = true
+                    useWideViewPort      = true
+                    setSupportZoom(true)
+                    builtInZoomControls  = true
+                    displayZoomControls  = false
+                }
+                loadUrl(mapUrl)
+            }
+        },
+        modifier = modifier
+    )
+}
+
+// ── Pantalla principal ────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HealthCentersMapScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     onCenterClick: (centerId: String) -> Unit,
     viewModel: AppointmentsViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
 
-    val initialPosition = remember {
-        state.healthCenters.firstOrNull()?.location
-            ?: com.google.android.gms.maps.model.LatLng(-12.0250, -76.9990)
-    }
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialPosition, 14f)
-    }
+    Box(modifier = Modifier.fillMaxSize()) {
 
-    Scaffold(
-        containerColor = Cream,
-        topBar = {
-            TopAppBar(
-                title = { Text("Postas Cercanas", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
+        // ── Mapa a pantalla completa ──────────────────
+        OSMMapView(modifier = Modifier.fillMaxSize())
+
+        // ── TopBar flotante ───────────────────────────
+        TopAppBar(
+            title = {
+                Text(
+                    "Postas Cercanas",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            navigationIcon = {
+                if (onBack != null) {
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
@@ -63,57 +96,61 @@ fun HealthCentersMapScreen(
                             tint = Crimson
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Crimson
-                )
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Mapa real con Google Maps
-            GoogleMap(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp),
-                cameraPositionState = cameraPositionState,
-                properties = MapProperties(isMyLocationEnabled = false)
-            ) {
-                state.healthCenters.forEach { center ->
-                    Marker(
-                        state = MarkerState(position = center.location),
-                        title = center.name,
-                        snippet = "${center.distanceKm} km",
-                        onClick = {
-                            onCenterClick(center.id)
-                            true
-                        }
-                    )
                 }
-            }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.White.copy(alpha = 0.93f),
+                titleContentColor = Crimson
+            ),
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
 
-            // Lista de postas
-            LazyColumn(
+        // ── Lista flotante en la parte inferior ───────
+        if (state.isLoadingCenters) {
+            CircularProgressIndicator(
+                color = Crimson,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        } else if (state.healthCenters.isNotEmpty()) {
+            Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(state.healthCenters, key = { it.id }) { center ->
-                    HealthCenterListItem(
-                        center = center,
-                        onSeeDetails = { onCenterClick(center.id) }
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .heightIn(max = 300.dp)
+                    .background(
+                        Color.White.copy(alpha = 0.96f),
+                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                     )
+                    .padding(top = 8.dp)
+            ) {
+                // Handle visual
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(Color.LightGray, RoundedCornerShape(2.dp))
+                        .align(Alignment.CenterHorizontally)
+                )
+                Spacer(Modifier.height(8.dp))
+
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(state.healthCenters, key = { it.id }) { center ->
+                        HealthCenterListItem(
+                            center = center,
+                            onSeeDetails = { onCenterClick(center.id) }
+                        )
+                    }
+                    item { Spacer(Modifier.height(8.dp)) }
                 }
             }
         }
     }
 }
+
+// ── Card de cada posta ────────────────────────────────────────────────────────
 
 @Composable
 private fun HealthCenterListItem(
@@ -158,7 +195,10 @@ private fun HealthCenterListItem(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(SuccessGreen, androidx.compose.foundation.shape.CircleShape)
+                                .background(
+                                    SuccessGreen,
+                                    androidx.compose.foundation.shape.CircleShape
+                                )
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(

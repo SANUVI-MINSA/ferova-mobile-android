@@ -27,8 +27,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.data.local.TokenManager
+import pe.edu.upc.ferovafamily.presentation.auth.AuthResult
+import pe.edu.upc.ferovafamily.presentation.auth.AuthViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,9 +65,21 @@ import pe.edu.upc.ferovafamily.presentation.theme.White
 @Composable
 fun VerificationScreen(
     onNavigateToNewPassword: () -> Unit = {},
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    viewModel: AuthViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val code = remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val tokenManager = remember { TokenManager.getInstance(context) }
+
+    LaunchedEffect(uiState.verifyCodeResult) {
+        if (uiState.verifyCodeResult is AuthResult.Success) {
+            // Guardar el código temporalmente para la siguiente pantalla
+            tokenManager.recoveryCode = code.value
+            onNavigateToNewPassword()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -202,9 +222,20 @@ fun VerificationScreen(
                 }
             )
 
+            if (uiState.verifyCodeResult is AuthResult.Error) {
+                Text(
+                    text = (uiState.verifyCodeResult as AuthResult.Error).message,
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    fontSize = 13.sp
+                )
+            }
+
             // Botón Verificar Código
             Button(
-                onClick = { onNavigateToNewPassword() },
+                onClick = {
+                    val email = tokenManager.recoveryEmail ?: ""
+                    viewModel.verifyPasswordCode(email, code.value)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -213,7 +244,7 @@ fun VerificationScreen(
                     containerColor = CrimsonDark,
                     disabledContainerColor = RoseBorder
                 ),
-                enabled = code.value.length == 4
+                enabled = code.value.length == 4 && uiState.verifyCodeResult !is AuthResult.Loading
             ) {
                 Text(
                     text = "Verificar Código",

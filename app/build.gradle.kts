@@ -64,9 +64,10 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
 
-    // Retrofit
+    // Retrofit + OkHttp
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)

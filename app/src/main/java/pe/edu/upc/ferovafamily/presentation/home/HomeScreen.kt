@@ -21,6 +21,10 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,8 +45,19 @@ fun HomeScreen(
     onNavigateToNewMeal: () -> Unit = {},
     onNavigateToCreatePatient: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
-    onLogout: () -> Unit = {}
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToHealthCenters: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    viewModel: HomeViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Recargar datos cada vez que el usuario llega a esta pantalla
+    // (por ejemplo, después de registrar un nuevo hijo)
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
     Scaffold(
         containerColor = Cream,
         topBar = {
@@ -64,7 +79,7 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: notificaciones */ }) {
+                    IconButton(onClick = onNavigateToNotifications) {
                         Icon(
                             Icons.Default.Notifications,
                             contentDescription = "Notificaciones",
@@ -85,7 +100,7 @@ fun HomeScreen(
         ) {
             // ── Saludo ──
             Text(
-                text = "¡Hola María!",
+                text = "¡Hola ${uiState.userName}!",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Crimson
@@ -101,7 +116,11 @@ fun HomeScreen(
             // ── Mis Niños ──
             SectionTitle("Mis Niños")
             Spacer(Modifier.height(8.dp))
-            ChildrenRow(onClick = onNavigateToCreatePatient)
+            ChildrenRow(
+                children = uiState.children,
+                onChildSelected = { childId -> viewModel.selectChild(childId) },
+                onAddChild = onNavigateToCreatePatient
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -137,8 +156,8 @@ fun HomeScreen(
                 icon = Icons.Default.LocationOn,
                 title = "Ver Postas Cercanas",
                 subtitle = "Encuentra tu centro de salud",
-                enabled = false,
-                onClick = { /* TODO */ }
+                enabled = true,
+                onClick = onNavigateToHealthCenters
             )
             Spacer(Modifier.height(10.dp))
             QuickAccessCard(
@@ -168,7 +187,9 @@ private fun SectionTitle(text: String) {
 
 @Composable
 private fun ChildrenRow(
-    onClick: () -> Unit
+    children: List<ChildInfo>,
+    onChildSelected: (String) -> Unit,
+    onAddChild: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -183,16 +204,33 @@ private fun ChildrenRow(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ChildAvatar(name = "Mateo", isSelected = true)
-            ChildAvatar(name = "Lucia", isSelected = false)
-            AddChildButton(onClick = onClick)
+            if (children.isEmpty()) {
+                Text(
+                    text = "Aún no tienes hijos registrados",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.weight(1f)
+                )
+            } else {
+                children.forEach { child ->
+                    ChildAvatar(
+                        name = child.name,
+                        isSelected = child.isSelected,
+                        onClick = { onChildSelected(child.id) }
+                    )
+                }
+            }
+            AddChildButton(onClick = onAddChild)
         }
     }
 }
 
 @Composable
-private fun ChildAvatar(name: String, isSelected: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun ChildAvatar(name: String, isSelected: Boolean, onClick: () -> Unit = {}) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier
                 .size(56.dp)

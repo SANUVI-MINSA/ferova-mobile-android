@@ -29,8 +29,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.data.local.TokenManager
+import pe.edu.upc.ferovafamily.presentation.auth.AuthResult
+import pe.edu.upc.ferovafamily.presentation.auth.AuthViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,12 +69,23 @@ import pe.edu.upc.ferovafamily.presentation.theme.Success
 @Composable
 fun NewPasswordScreen(
     onNavigateToLogin: () -> Unit = {},
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    viewModel: AuthViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val tokenManager = remember { TokenManager.getInstance(context) }
     val password = remember { mutableStateOf("") }
     val confirmPassword = remember { mutableStateOf("") }
     val isPasswordVisible = remember { mutableStateOf(false) }
     val isConfirmPasswordVisible = remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.resetPasswordResult) {
+        if (uiState.resetPasswordResult is AuthResult.Success) {
+            tokenManager.clearRecovery()
+            onNavigateToLogin()
+        }
+    }
 
     val hasMinLength = password.value.length >= 8
     val hasNumber = password.value.any { it.isDigit() }
@@ -315,9 +334,21 @@ fun NewPasswordScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            if (uiState.resetPasswordResult is AuthResult.Error) {
+                Text(
+                    text = (uiState.resetPasswordResult as AuthResult.Error).message,
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    fontSize = 13.sp
+                )
+            }
+
             // Botón Actualizar Contraseña
             Button(
-                onClick = { onNavigateToLogin() },
+                onClick = {
+                    val email = tokenManager.recoveryEmail ?: ""
+                    val code = tokenManager.recoveryCode ?: ""
+                    viewModel.resetPassword(email, code, password.value)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -326,8 +357,8 @@ fun NewPasswordScreen(
                     containerColor = CrimsonDark,
                     disabledContainerColor = RoseBorder
                 ),
-                enabled = hasMinLength && hasNumber
-                        && hasSpecial && passwordsMatch
+                enabled = hasMinLength && hasNumber && hasSpecial && passwordsMatch
+                        && uiState.resetPasswordResult !is AuthResult.Loading
             ) {
                 Text(
                     text = "Actualizar Contraseña",
