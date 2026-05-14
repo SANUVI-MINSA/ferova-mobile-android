@@ -1,7 +1,5 @@
 package pe.edu.upc.ferovafamily.presentation.appointments.screens
 
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,41 +19,68 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
 
-private val Crimson     = Color(0xFF8B1A1A)
-private val Cream       = Color(0xFFFDF8F8)
-private val SoftPink    = Color(0xFFF9E8E8)
+private val Crimson      = Color(0xFF8B1A1A)
+private val Cream        = Color(0xFFFDF8F8)
+private val SoftPink     = Color(0xFFF9E8E8)
 private val SuccessGreen = Color(0xFF4CAF50)
 
-// ── Mapa OpenStreetMap (sin API key, via embed URL) ──────────────────────────
+// ── Mapa OSMDroid (OpenStreetMap, sin API key) ────────────────────────────────
 
 @Composable
 private fun OSMMapView(
+    centers: List<HealthCenter>,
     modifier: Modifier = Modifier
 ) {
-    // URL de embed de OpenStreetMap centrada en San Juan de Lurigancho, Lima
-    // bbox = oeste,sur,este,norte   marker = lat,lon
-    val mapUrl = "https://www.openstreetmap.org/export/embed.html" +
-            "?bbox=-77.05%2C-12.08%2C-76.95%2C-11.98" +
-            "&layer=mapnik" +
-            "&marker=-12.0250%2C-76.9990"
-
     AndroidView(
         factory = { ctx ->
-            WebView(ctx).apply {
-                webViewClient = WebViewClient()             // abre links en el mismo WebView
-                settings.apply {
-                    javaScriptEnabled    = true
-                    domStorageEnabled    = true
-                    loadWithOverviewMode = true
-                    useWideViewPort      = true
-                    setSupportZoom(true)
-                    builtInZoomControls  = true
-                    displayZoomControls  = false
+            // Configurar OSMDroid
+            Configuration.getInstance().apply {
+                load(ctx, ctx.getSharedPreferences("osmdroid", android.content.Context.MODE_PRIVATE))
+                userAgentValue = ctx.packageName
+            }
+
+            MapView(ctx).apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                isTilesScaledToDpi = true
+
+                // Centrar en San Juan de Lurigancho, Lima
+                val centerPoint = GeoPoint(-12.0250, -76.9990)
+                controller.setZoom(14.0)
+                controller.setCenter(centerPoint)
+
+                // Marcadores de postas
+                if (centers.isNotEmpty()) {
+                    centers.forEach { center ->
+                        val marker = Marker(this).apply {
+                            position = GeoPoint(
+                                center.location.latitude,
+                                center.location.longitude
+                            )
+                            title   = center.name
+                            snippet = "${center.distanceKm} km · ${center.address}"
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        }
+                        overlays.add(marker)
+                    }
+                } else {
+                    // Marcador de referencia cuando no hay datos del API
+                    val marker = Marker(this).apply {
+                        position = centerPoint
+                        title    = "San Juan de Lurigancho"
+                        snippet  = "Lima, Perú"
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    }
+                    overlays.add(marker)
                 }
-                loadUrl(mapUrl)
             }
         },
         modifier = modifier
@@ -77,16 +101,14 @@ fun HealthCentersMapScreen(
     Box(modifier = Modifier.fillMaxSize()) {
 
         // ── Mapa a pantalla completa ──────────────────
-        OSMMapView(modifier = Modifier.fillMaxSize())
+        OSMMapView(
+            centers = state.healthCenters,
+            modifier = Modifier.fillMaxSize()
+        )
 
         // ── TopBar flotante ───────────────────────────
         TopAppBar(
-            title = {
-                Text(
-                    "Postas Cercanas",
-                    fontWeight = FontWeight.Bold
-                )
-            },
+            title = { Text("Postas Cercanas", fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 if (onBack != null) {
                     IconButton(onClick = onBack) {
@@ -105,7 +127,7 @@ fun HealthCentersMapScreen(
             modifier = Modifier.align(Alignment.TopCenter)
         )
 
-        // ── Lista flotante en la parte inferior ───────
+        // ── Lista flotante inferior ───────────────────
         if (state.isLoadingCenters) {
             CircularProgressIndicator(
                 color = Crimson,
@@ -118,12 +140,11 @@ fun HealthCentersMapScreen(
                     .fillMaxWidth()
                     .heightIn(max = 300.dp)
                     .background(
-                        Color.White.copy(alpha = 0.96f),
+                        Color.White.copy(alpha = 0.97f),
                         RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                     )
                     .padding(top = 8.dp)
             ) {
-                // Handle visual
                 Box(
                     modifier = Modifier
                         .width(40.dp)
@@ -132,7 +153,6 @@ fun HealthCentersMapScreen(
                         .align(Alignment.CenterHorizontally)
                 )
                 Spacer(Modifier.height(8.dp))
-
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -175,11 +195,7 @@ private fun HealthCenterListItem(
                     .background(SoftPink, RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.LocalHospital,
-                    contentDescription = null,
-                    tint = Crimson
-                )
+                Icon(Icons.Default.LocalHospital, contentDescription = null, tint = Crimson)
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -195,10 +211,7 @@ private fun HealthCenterListItem(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(
-                                    SuccessGreen,
-                                    androidx.compose.foundation.shape.CircleShape
-                                )
+                                .background(SuccessGreen, androidx.compose.foundation.shape.CircleShape)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
