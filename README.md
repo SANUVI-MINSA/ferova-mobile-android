@@ -227,19 +227,6 @@ docs(readme): update project structure
 
 ---
 
-## Equipo
-
-Proyecto desarrollado para el curso **Aplicaciones Móviles (1ACC0238)** — Universidad Peruana de Ciencias Aplicadas.
-
-| Integrante | Rol | Módulos |
-|---|---|---|
-| Sebastian Pariachi | Mobile Developer | Consultas, Citas/Postas, Progreso y Medallas |
-| *(Compañero/a 1)* | Mobile Developer | Inicio, Confirmar Dosis |
-| *(Compañero/a 2)* | Mobile Developer | Diario, Nutrición |
-| *(Compañero/a 3)* | Mobile Developer | Autenticación |
-
----
-
 ## Licencia
 
 Proyecto de uso académico — UPC 2026.
