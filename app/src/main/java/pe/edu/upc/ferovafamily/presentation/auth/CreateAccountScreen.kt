@@ -35,8 +35,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,8 +69,10 @@ import pe.edu.upc.ferovafamily.presentation.theme.White
 
 @Composable
 fun CreateAccountScreen(
-    onNavigateToLogin: () -> Unit = {}
+    onNavigateToLogin: () -> Unit = {},
+    viewModel: AuthViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val firstName = remember { mutableStateOf("") }
     val lastName = remember { mutableStateOf("") }
     val dni = remember { mutableStateOf("") }
@@ -77,6 +83,14 @@ fun CreateAccountScreen(
     val isPasswordVisible = remember { mutableStateOf(false) }
     val isConfirmPasswordVisible = remember { mutableStateOf(false) }
     val acceptedTerms = remember { mutableStateOf(false) }
+
+    // Navegar al login cuando el registro es exitoso
+    LaunchedEffect(uiState.registerResult) {
+        if (uiState.registerResult is AuthResult.Success) {
+            viewModel.resetRegisterResult()
+            onNavigateToLogin()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -336,9 +350,39 @@ fun CreateAccountScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Mensaje contraseñas no coinciden
+            if (confirmPassword.value.isNotEmpty() && password.value != confirmPassword.value) {
+                Text(
+                    text = "Las contraseñas no coinciden",
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    fontSize = 13.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Mensaje de error del backend
+            if (uiState.registerResult is AuthResult.Error) {
+                Text(
+                    text = (uiState.registerResult as AuthResult.Error).message,
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    fontSize = 13.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
             // Botón Registrarse
             Button(
-                onClick = { onNavigateToLogin() },
+                onClick = {
+                    if (password.value != confirmPassword.value) return@Button
+                    viewModel.registerMother(
+                        name = firstName.value,
+                        lastname = lastName.value,
+                        dni = dni.value,
+                        email = email.value,
+                        phone = phone.value,
+                        password = password.value
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -348,13 +392,23 @@ fun CreateAccountScreen(
                     disabledContainerColor = RoseBorder
                 ),
                 enabled = acceptedTerms.value
+                        && uiState.registerResult !is AuthResult.Loading
+                        && (confirmPassword.value.isEmpty() || password.value == confirmPassword.value)
             ) {
-                Text(
-                    text = "Registrarse  →",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = White
-                )
+                if (uiState.registerResult is AuthResult.Loading) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = White,
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Registrarse  →",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = White
+                    )
+                }
             }
 
             // ¿Ya tienes cuenta?

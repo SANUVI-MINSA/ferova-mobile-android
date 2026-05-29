@@ -20,14 +20,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.presentation.auth.AuthResult
+import pe.edu.upc.ferovafamily.presentation.auth.AuthViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,9 +61,17 @@ import pe.edu.upc.ferovafamily.presentation.theme.White
 @Composable
 fun RecoveryPasswordScreen(
     onNavigateToVerification: () -> Unit = {},
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    viewModel: AuthViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val email = remember { mutableStateOf("") }
+
+    LaunchedEffect(uiState.requestCodeResult) {
+        if (uiState.requestCodeResult is AuthResult.Success) {
+            onNavigateToVerification()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -187,9 +202,18 @@ fun RecoveryPasswordScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Error
+            if (uiState.requestCodeResult is AuthResult.Error) {
+                Text(
+                    text = (uiState.requestCodeResult as AuthResult.Error).message,
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    fontSize = 13.sp
+                )
+            }
+
             // Botón Enviar Código
             Button(
-                onClick = { onNavigateToVerification() },
+                onClick = { viewModel.requestPasswordCode(email.value) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -197,7 +221,7 @@ fun RecoveryPasswordScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = CrimsonDark
                 ),
-                enabled = email.value.isNotEmpty()
+                enabled = email.value.isNotEmpty() && uiState.requestCodeResult !is AuthResult.Loading
             ) {
                 Text(
                     text = "Enviar Código  →",

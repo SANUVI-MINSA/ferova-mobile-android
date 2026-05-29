@@ -64,9 +64,10 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
 
-    // Retrofit
+    // Retrofit + OkHttp
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -96,4 +97,7 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    // OSMDroid — mapa OpenStreetMap nativo sin API key
+    implementation("org.osmdroid:osmdroid-android:6.1.18")
 }

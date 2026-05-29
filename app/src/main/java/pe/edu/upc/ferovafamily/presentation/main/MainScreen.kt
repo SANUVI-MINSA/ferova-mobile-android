@@ -1,6 +1,5 @@
 package pe.edu.upc.ferovafamily.presentation.main
 
-import android.R.attr.type
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentBookingScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,6 +41,7 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryRo
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NewNutritionalMealScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalDiaryScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalHistoryScreen
+import pe.edu.upc.ferovafamily.presentation.notifications.NotificationsScreen
 import pe.edu.upc.ferovafamily.presentation.patient_management.PatientManagementRoutes
 import pe.edu.upc.ferovafamily.presentation.patient_management.screens.CreatePatientScreen
 
@@ -50,8 +50,8 @@ private val Cream = Color(0xFFFDF8F8)
 
 @Composable
 fun MainScreen(
-    // Agregamos este parámetro para comunicarnos con el NavGraph principal
-    onNavigateToHistory: () -> Unit = {}
+    onNavigateToHistory: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -115,9 +115,14 @@ fun MainScreen(
                     onNavigateToCreatePatient = {
                         navController.navigate(PatientManagementRoutes.CREATE_PATIENT)
                     },
-                    onLogout = {
-                        // TODO: cuando lo implemente el equipo, regresar al login
-                    }
+                    onNavigateToHistory = onNavigateToHistory,
+                    onNavigateToNotifications = {
+                        navController.navigate(MainRoutes.NOTIFICATIONS)
+                    },
+                    onNavigateToHealthCenters = {
+                        navController.navigate(MainRoutes.APPOINTMENTS)
+                    },
+                    onLogout = onLogout
                 )
             }
 
@@ -133,9 +138,14 @@ fun MainScreen(
                 )
             }
 
-            // Tab: Citas (placeholder)
+            // Tab: Citas — mapa de postas + flujo de agendar cita
             composable(MainRoutes.APPOINTMENTS) {
-                PlaceholderScreen("Citas")
+                HealthCentersMapScreen(
+                    onBack = null,
+                    onCenterClick = { centerId ->
+                        navController.navigate(AppointmentsRoutes.healthCenterDetail(centerId))
+                    }
+                )
             }
 
             composable(MainRoutes.CONSULTATIONS_TAB) {
@@ -190,6 +200,14 @@ fun MainScreen(
                     ?: return@composable
                 ChatScreen(
                     consultationId = consultationId,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            // ──────────── NOTIFICACIONES ────────────
+
+            composable(MainRoutes.NOTIFICATIONS) {
+                NotificationsScreen(
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -349,7 +367,7 @@ fun MainScreen(
                     onBack = { navController.popBackStack() },
                     onConfirm = { appointmentId ->
                         navController.navigate(AppointmentsRoutes.appointmentConfirmed(appointmentId)) {
-                            popUpTo(MainRoutes.CONSULTATIONS_TAB)
+                            popUpTo(MainRoutes.APPOINTMENTS)
                         }
                     }
                 )

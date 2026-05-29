@@ -18,8 +18,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.presentation.patient_management.PatientResult
+import pe.edu.upc.ferovafamily.presentation.patient_management.PatientViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,10 +44,18 @@ import pe.edu.upc.ferovafamily.presentation.theme.Crimson
 @Composable
 fun CreatePatientScreen(
     onRegisterChild: () -> Unit = {},
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    patientViewModel: PatientViewModel = viewModel()
 ) {
-    val childData = remember {
-        mutableStateOf(ChildData())
+    val uiState by patientViewModel.uiState.collectAsState()
+    val childData = remember { mutableStateOf(ChildData()) }
+
+    // Navegar al éxito
+    LaunchedEffect(uiState.registerResult) {
+        if (uiState.registerResult is PatientResult.Success) {
+            patientViewModel.resetResult()
+            onRegisterChild()
+        }
     }
 
     Scaffold(
@@ -87,9 +101,25 @@ fun CreatePatientScreen(
             )
             Spacer(Modifier.height(16.dp))
 
-            ChildCreationForm(onRegister = {
-                childData.value = it
-                onRegisterChild()
+            if (uiState.registerResult is PatientResult.Error) {
+                androidx.compose.material3.Text(
+                    text = (uiState.registerResult as PatientResult.Error).message,
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            }
+
+            ChildCreationForm(onRegister = { data ->
+                childData.value = data
+                val genderApi = if (data.gender == "Masculino") "MALE" else "FEMALE"
+                patientViewModel.registerPatient(
+                    name = data.name,
+                    lastName = data.lastName,
+                    birthDate = data.birthDate,
+                    gender = genderApi,
+                    weight = data.weight,
+                    height = data.height.toDouble()
+                )
             })
 
             Spacer(Modifier.height(24.dp))

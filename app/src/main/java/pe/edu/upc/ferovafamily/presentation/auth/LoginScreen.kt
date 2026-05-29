@@ -38,6 +38,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.ferovafamily.presentation.theme.Crimson
 import pe.edu.upc.ferovafamily.presentation.theme.CrimsonDark
 import pe.edu.upc.ferovafamily.presentation.theme.Cream
@@ -70,11 +72,21 @@ import pe.edu.upc.ferovafamily.presentation.theme.White
 fun LoginScreen(
     onNavigateToCreateAccount: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
-    onNavigateToRecovery: () -> Unit = {}
+    onNavigateToRecovery: () -> Unit = {},
+    viewModel: AuthViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val dni = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     val isPasswordVisible = remember { mutableStateOf(false) }
+
+    // Navegar al home en cuanto el login tiene éxito (API real) o de inmediato si se fuerza
+    LaunchedEffect(uiState.loginResult) {
+        if (uiState.loginResult is AuthResult.Success) {
+            viewModel.resetLoginResult()
+            onNavigateToHome()
+        }
+    }
 
     // Animación de entrada del card
     var cardVisible by remember { mutableStateOf(false) }
@@ -261,13 +273,29 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Mensaje de error
+            if (uiState.loginResult is AuthResult.Error) {
+                Text(
+                    text = (uiState.loginResult as AuthResult.Error).message,
+                    color = androidx.compose.ui.graphics.Color.Red,
+                    fontSize = 13.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
             // Botón Iniciar Sesión
             Button(
-                onClick = { onNavigateToHome() },
+                onClick = {
+                    // Lanzar el login real en background para obtener el token
+                    viewModel.login(dni.value, password.value)
+                    // Entrar directamente sin esperar respuesta del servidor
+                    onNavigateToHome()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
+                enabled = dni.value.isNotBlank() && password.value.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = CrimsonDark
                 )

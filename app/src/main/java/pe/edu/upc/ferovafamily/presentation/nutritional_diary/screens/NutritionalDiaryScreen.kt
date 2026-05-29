@@ -13,8 +13,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -36,17 +38,19 @@ import pe.edu.upc.ferovafamily.presentation.theme.White
 fun NutritionalDiaryScreen(
     onNewFoodEntry: () -> Unit = {},
     onSeeFoodHistory: (String) -> Unit = {},
+    diaryViewModel: NutritionalDiaryViewModel = viewModel()
 ) {
-    val selectedPatient = remember {
-        mutableStateOf("Mateo")
-    }
-    val patients = listOf("Mateo", "Lucia")
+    val diaryState by diaryViewModel.uiState.collectAsState()
+
+    val patients        = diaryState.patients.ifEmpty { listOf("Sin hijos registrados") }
+    val selectedPatient = diaryState.selectedPatient.ifBlank { patients.first() }
+
     val foodEntries = FoodEntryDatabase.foodEntries
-    val foodItems = FoodDatabase.foodItems
-    val ironAbsorbed = FoodEntryDatabase.foodEntries
-        .filter { it.patientName == selectedPatient.value }
+    val foodItems   = FoodDatabase.foodItems
+    val ironAbsorbed = foodEntries
+        .filter { it.patientName == selectedPatient }
         .sumOf { it.ironContributed }
-    val today = "2026-05-11"
+    val today = java.time.LocalDate.now().toString()
 
     Scaffold(
         containerColor = White,
@@ -75,18 +79,18 @@ fun NutritionalDiaryScreen(
             Spacer(Modifier.height(24.dp))
 
             IronAbsorptionCard(
-                selectedPatient = selectedPatient.value,
+                selectedPatient = selectedPatient,
                 totalIron = ironAbsorbed,
                 patients = patients,
                 onPatientSelected = { newName ->
-                    selectedPatient.value = newName
+                    diaryViewModel.selectPatient(newName)
                 }
             )
 
             Spacer(Modifier.height(24.dp))
 
             TodayFoodEntriesList(
-                patientName = selectedPatient.value,
+                patientName = selectedPatient,
                 date = today,
                 foodItems = foodItems,
                 foodEntries = foodEntries
@@ -94,7 +98,7 @@ fun NutritionalDiaryScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            ActionButtons(onNewFoodEntry, { onSeeFoodHistory(selectedPatient.value) })
+            ActionButtons(onNewFoodEntry, { onSeeFoodHistory(selectedPatient) })
 
             Spacer(Modifier.height(24.dp))
 
