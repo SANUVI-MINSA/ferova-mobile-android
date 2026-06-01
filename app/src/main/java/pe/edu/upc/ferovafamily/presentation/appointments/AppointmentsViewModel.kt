@@ -1,6 +1,9 @@
 package pe.edu.upc.ferovafamily.presentation.appointments
 
+import android.Manifest
 import android.app.Application
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
@@ -20,6 +23,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 data class AppointmentsUiState(
+    val userLocation: Pair<Double, Double> = Pair(-12.0250,-76.9990),//Lat y Lng, incluidos en valor default
     val healthCenters: List<HealthCenter> = emptyList(),
     val appointments: List<Appointment> = emptyList(),
     val availableSlots: List<TimeSlot> = emptyList(),
@@ -46,13 +50,23 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         loadNearbyFacilities()
     }
 
+    // Verificacion de permiso de ubicacion
+    fun hasLocationPermission(): Boolean {
+        return ActivityCompat.checkSelfPermission(
+            getApplication(),
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
     // ── Postas cercanas ───────────────────────────────────────────────────────
 
-    fun loadNearbyFacilities(lat: Double = defaultLat, lng: Double = defaultLng) {
+    fun loadNearbyFacilities() {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingCenters = true, error = null) }
+            val lat = _state.value.userLocation.first
+            val lng = _state.value.userLocation.second
             try {
-                val response = service.getNearbyFacilities(lat, lng)
+                val response = service.getNearbyFacilities(lat,lng)
                 if (response.isSuccessful) {
                     val centers = response.body()?.map { dto ->
                         HealthCenter(
@@ -61,8 +75,8 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                             address = dto.address ?: "",
                             phone = dto.phoneNumber ?: "",
                             location = LatLng(
-                                dto.latitude ?: defaultLat,
-                                dto.longitude ?: defaultLng
+                                dto.latitude ?: 0.0,
+                                dto.longitude ?: 0.0
                             ),
                             distanceKm = dto.distanceKm ?: 0.0,
                             isActive = dto.isActive ?: true,
