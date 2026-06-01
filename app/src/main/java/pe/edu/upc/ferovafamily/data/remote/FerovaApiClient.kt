@@ -9,7 +9,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
-private const val BASE_URL = "https://backend-ferova-production.up.railway.app/"
+private const val BASE_URL = "https://backend-ferova-test.up.railway.app/"
 
 /**
  * Interceptor que agrega el JWT Bearer Token a cada petición autenticada.
