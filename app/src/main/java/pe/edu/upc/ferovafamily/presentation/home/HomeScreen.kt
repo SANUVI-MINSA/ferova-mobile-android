@@ -365,13 +365,41 @@ private fun DoseCard(onViewHistory: () -> Unit) {
 
             Spacer(Modifier.height(16.dp))
 
-            Button(
-                onClick = { /* TODO */ },
+            // Aviso: el tratamiento lo activa la enfermera desde su app
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = true,
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.MedicalServices,
+                        contentDescription = null,
+                        tint = Color(0xFF856404),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Visita tu posta para que la enfermera active tu tratamiento",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF856404)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Button(
+                onClick = { /* Confirmar dosis — requiere tratamiento activo */ },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false,   // se activa cuando la enfermera inicia el tratamiento
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Crimson,
-                    contentColor = Color.White
+                    contentColor = Color.White,
+                    disabledContainerColor = DisabledGray
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {

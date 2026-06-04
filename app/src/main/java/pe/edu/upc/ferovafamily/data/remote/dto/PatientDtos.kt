@@ -4,6 +4,21 @@ import com.google.gson.annotations.SerializedName
 
 // ── Requests ─────────────────────────────────────────────────────────────────
 
+// POST /api/patients/medical-record  (NURSE only)
+data class CreateMedicalRecordRequest(
+    @SerializedName("patientId")         val patientId: String,
+    @SerializedName("initialHemoglobin") val initialHemoglobin: Double,
+    @SerializedName("diagnosis")         val diagnosis: String,
+    @SerializedName("notes")             val notes: String? = null
+)
+
+// POST /api/patients/hemoglobin-control  (NURSE only)
+data class HemoglobinControlRequest(
+    @SerializedName("patientId")      val patientId: String,
+    @SerializedName("hemoglobinLevel") val hemoglobinLevel: Double,
+    @SerializedName("controlDate")    val controlDate: String     // "yyyy-MM-dd"
+)
+
 data class RegisterPatientRequest(
     @SerializedName("name") val name: String,
     @SerializedName("lastName") val lastName: String,

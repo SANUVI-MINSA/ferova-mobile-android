@@ -9,7 +9,15 @@ data class ConfirmDoseRequest(
     @SerializedName("confirmedAt") val confirmedAt: String    // ISO 8601
 )
 
-// ── Responses reales del backend ──────────────────────────────────────────────
+// POST /api/treatment-tracking/treatments  (NURSE only)
+data class StartTreatmentRequest(
+    @SerializedName("patientId")    val patientId: String,
+    @SerializedName("startDate")    val startDate: String,     // "yyyy-MM-dd"
+    @SerializedName("durationDays") val durationDays: Int,     // 90
+    @SerializedName("ironDoseMg")   val ironDoseMg: Double     // mg diarios
+)
+
+// ── Responses ──────────────────────────────────────────────────────────────────
 //
 // GET /api/treatment-tracking/patients/{id}/today-dose →
 // { canConfirm: bool, message: string }

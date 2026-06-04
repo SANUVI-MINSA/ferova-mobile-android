@@ -3,9 +3,12 @@ package pe.edu.upc.ferovafamily.data.repository
 import pe.edu.upc.ferovafamily.data.mapper.toDomain
 import pe.edu.upc.ferovafamily.data.remote.api.TreatmentApiService
 import pe.edu.upc.ferovafamily.data.remote.dto.ConfirmDoseRequest
+import pe.edu.upc.ferovafamily.data.remote.dto.StartTreatmentRequest
 import pe.edu.upc.ferovafamily.domain.model.DoseRecord
 import pe.edu.upc.ferovafamily.domain.model.TodayDose
+import pe.edu.upc.ferovafamily.domain.model.Treatment
 import pe.edu.upc.ferovafamily.domain.repository.TreatmentRepository
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -36,6 +39,21 @@ class TreatmentRepositoryImpl(
             return response.body()?.toDomain() ?: confirmedMockRecord(patientId, now)
         }
         return confirmedMockRecord(patientId, now)
+    }
+
+    /** NURSE only — 403 para rol Mother */
+    override suspend fun startTreatment(patientId: String, durationDays: Int, ironDoseMg: Double): Treatment {
+        val today = LocalDate.now().toString()
+        val response = service.startTreatment(
+            StartTreatmentRequest(patientId, today, durationDays, ironDoseMg)
+        )
+        return if (response.isSuccessful) {
+            Treatment(
+                id = response.body()?.id ?: java.util.UUID.randomUUID().toString(),
+                patientId = patientId, startDate = today,
+                durationDays = durationDays, ironDoseMg = ironDoseMg, status = "ACTIVE"
+            )
+        } else throw Exception("startTreatment HTTP ${response.code()}")
     }
 
     // ── Mock data ─────────────────────────────────────────────────────────────
