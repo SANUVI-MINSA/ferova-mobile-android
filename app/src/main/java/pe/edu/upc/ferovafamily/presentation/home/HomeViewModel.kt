@@ -26,40 +26,38 @@ data class HomeUiState(
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val tokenManager  = TokenManager.getInstance(application)
+    private val tokenManager   = TokenManager.getInstance(application)
     private val patientService = FerovaApiClient.create(PatientApiService::class.java, application)
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    init {
-        loadData()
-    }
+    init { loadData() }
 
     fun loadData() {
-        // Nombre del usuario (guardado en TokenManager al hacer login)
+        // Nombre del usuario desde TokenManager (guardado al hacer login)
         val name = tokenManager.userName?.takeIf { it.isNotBlank() } ?: "Mamá"
-        _uiState.update { it.copy(userName = name) }
+        _uiState.update { it.copy(userName = name, isLoading = true) }
 
-        val motherId = tokenManager.userId ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
             try {
-                val response = patientService.getPatientsByMother(motherId)
+                // Usar GET /api/patients/my-patients (no requiere motherId en path)
+                // Devuelve { motherId, patients: [{id, name}] }
+                val response = patientService.getMyPatients()
                 if (response.isSuccessful) {
-                    val patients = response.body() ?: emptyList()
+                    val patients = response.body()?.patients ?: emptyList()
                     val children = patients.mapIndexed { index, p ->
                         ChildInfo(
-                            id = p.id,
-                            name = p.name,
+                            id         = p.id,
+                            name       = p.name,
                             isSelected = index == 0
                         )
                     }
-                    _uiState.update { it.copy(children = children) }
+                    _uiState.update { it.copy(children = children, isLoading = false) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             } catch (_: Exception) {
-                // Sin conexión o error: dejar lista vacía, la UI mostrará solo el botón "+"
-            } finally {
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
@@ -67,7 +65,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectChild(childId: String) {
         _uiState.update { state ->
-            state.copy(children = state.children.map { it.copy(isSelected = it.id == childId) })
+            state.copy(children = state.children.map {
+                it.copy(isSelected = it.id == childId)
+            })
         }
     }
 

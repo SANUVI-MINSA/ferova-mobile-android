@@ -285,36 +285,38 @@ fun LoginScreen(
 
             // Botón Iniciar Sesión
             Button(
-                onClick = {
-                    // Lanzar el login real en background para obtener el token
-                    viewModel.login(dni.value, password.value)
-                    // Entrar directamente sin esperar respuesta del servidor
-                    onNavigateToHome()
-                },
+                onClick = { viewModel.login(dni.value, password.value) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-                enabled = dni.value.isNotBlank() && password.value.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = CrimsonDark
-                )
+                enabled = dni.value.isNotBlank() && password.value.isNotBlank()
+                        && uiState.loginResult !is AuthResult.Loading,
+                colors = ButtonDefaults.buttonColors(containerColor = CrimsonDark)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = White,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .padding(end = 4.dp)
-                )
-                Spacer(modifier = Modifier.size(6.dp))
-                Text(
-                    text = "Iniciar Sesión",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = White
-                )
+                if (uiState.loginResult is AuthResult.Loading) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = White,
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = White,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(end = 4.dp)
+                    )
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Text(
+                        text = "Iniciar Sesión",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = White
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))

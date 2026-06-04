@@ -66,10 +66,20 @@ class PatientViewModel(application: Application) : AndroidViewModel(application)
                 if (response.isSuccessful) {
                     _uiState.update { it.copy(registerResult = PatientResult.Success) }
                 } else {
-                    val msg = when (response.code()) {
+                    // Intentar leer el mensaje real del backend
+                    val backendMsg = try {
+                        val json = com.google.gson.Gson().fromJson(
+                            response.errorBody()?.string(),
+                            com.google.gson.JsonObject::class.java
+                        )
+                        json?.get("message")?.asString
+                            ?: json?.get("error")?.asString
+                    } catch (_: Exception) { null }
+
+                    val msg = backendMsg ?: when (response.code()) {
                         409 -> "El paciente ya existe"
-                        400 -> "Datos inválidos. Revisa el formulario"
-                        else -> "Error al registrar el paciente (${response.code()})"
+                        400 -> "Datos inválidos (${response.code()})"
+                        else -> "Error al registrar (${response.code()})"
                     }
                     _uiState.update { it.copy(registerResult = PatientResult.Error(msg)) }
                 }

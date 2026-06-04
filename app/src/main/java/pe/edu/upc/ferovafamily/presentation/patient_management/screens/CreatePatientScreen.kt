@@ -112,13 +112,20 @@ fun CreatePatientScreen(
             ChildCreationForm(onRegister = { data ->
                 childData.value = data
                 val genderApi = if (data.gender == "Masculino") "MALE" else "FEMALE"
+
+                // Convertir fecha de MM/dd/yyyy → yyyy-MM-dd (formato ISO exigido por el backend)
+                val isoDate = convertToIsoDate(data.birthDate)
+
+                // Si el usuario ingresó metros (ej: 1.72) → convertir a cm (172.0)
+                val heightCm = if (data.height in 0.5..3.0) data.height * 100 else data.height
+
                 patientViewModel.registerPatient(
-                    name = data.name,
-                    lastName = data.lastName,
-                    birthDate = data.birthDate,
-                    gender = genderApi,
-                    weight = data.weight,
-                    height = data.height.toDouble()
+                    name      = data.name,
+                    lastName  = data.lastName,
+                    birthDate = isoDate,
+                    gender    = genderApi,
+                    weight    = data.weight,
+                    height    = heightCm
                 )
             })
 
@@ -141,8 +148,21 @@ data class ChildData(
     val birthDate: String = "",
     val gender: String = "",
     val weight: Double = 0.0,
-    val height: Int = 0
+    val height: Double = 0.0
 )
+
+/** Convierte MM/dd/yyyy → yyyy-MM-dd que exige el backend */
+fun convertToIsoDate(date: String): String {
+    return try {
+        val parts = date.split("/")
+        if (parts.size == 3) {
+            val month = parts[0].padStart(2, '0')
+            val day   = parts[1].padStart(2, '0')
+            val year  = parts[2]
+            "$year-$month-$day"
+        } else date
+    } catch (_: Exception) { date }
+}
 
 @Preview
 @Composable

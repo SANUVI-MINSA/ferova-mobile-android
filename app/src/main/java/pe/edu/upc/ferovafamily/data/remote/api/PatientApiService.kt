@@ -1,5 +1,7 @@
 package pe.edu.upc.ferovafamily.data.remote.api
 
+import pe.edu.upc.ferovafamily.data.remote.dto.HemoglobinRecordDto
+import pe.edu.upc.ferovafamily.data.remote.dto.MyPatientsResponseDto
 import pe.edu.upc.ferovafamily.data.remote.dto.PatientResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.RegisterPatientRequest
 import retrofit2.Response
@@ -15,4 +17,13 @@ interface PatientApiService {
 
     @GET("api/patients/mother/{motherId}")
     suspend fun getPatientsByMother(@Path("motherId") motherId: String): Response<List<PatientResponse>>
+
+    /** Devuelve { motherId, patients: [{id, name}] } */
+    @GET("api/patients/my-patients")
+    suspend fun getMyPatients(): Response<MyPatientsResponseDto>
+
+    @GET("api/patients/{patientId}/hemoglobin-evolution")
+    suspend fun getHemoglobinEvolution(
+        @Path("patientId") patientId: String
+    ): Response<List<HemoglobinRecordDto>>
 }

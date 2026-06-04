@@ -50,7 +50,7 @@ fun ChildCreationForm(
     val heightInput = remember { mutableStateOf("") }
 
     val weight: Double = weightInput.value.toDoubleOrNull() ?: 0.0
-    val height: Int = heightInput.value.toIntOrNull() ?: 0
+    val height: Double = heightInput.value.toDoubleOrNull() ?: 0.0
 
     Column {
         Card(
@@ -205,12 +205,12 @@ fun ChildCreationForm(
 
                 onRegister(
                     ChildData(
-                        name = name.value,
-                        lastName = lastName.value,
+                        name      = name.value,
+                        lastName  = lastName.value,
                         birthDate = birthDate.value,
-                        gender = gender.value,
-                        weight = weight,
-                        height = height
+                        gender    = gender.value,
+                        weight    = weight,
+                        height    = height
                     )
                 )
             }
