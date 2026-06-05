@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.main
 
+import android.util.Log
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentBookingScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -141,7 +142,6 @@ fun MainScreen(
             // Tab: Citas — mapa de postas + flujo de agendar cita
             composable(MainRoutes.APPOINTMENTS) {
                 HealthCentersMapScreen(
-                    onBack = null,
                     onCenterClick = { centerId ->
                         navController.navigate(AppointmentsRoutes.healthCenterDetail(centerId))
                     }
@@ -309,21 +309,12 @@ fun MainScreen(
             }
 
             // ──────────── SUBPANTALLAS: CITAS Y POSTAS ────────────
-
-            composable(AppointmentsRoutes.HEALTH_CENTERS_MAP) {
-                HealthCentersMapScreen(
-                    onBack = { navController.popBackStack() },
-                    onCenterClick = { centerId ->
-                        navController.navigate(AppointmentsRoutes.healthCenterDetail(centerId))
-                    }
-                )
-            }
-
             composable(
                 route = AppointmentsRoutes.HEALTH_CENTER_DETAIL,
                 arguments = listOf(navArgument("centerId") { type = NavType.StringType })
             ) { backStack ->
                 val centerId = backStack.arguments?.getString("centerId") ?: return@composable
+                Log.d("Navigation","Center Id Detail: $centerId")
                 HealthCenterDetailScreen(
                     centerId = centerId,
                     onBack = { navController.popBackStack() },
