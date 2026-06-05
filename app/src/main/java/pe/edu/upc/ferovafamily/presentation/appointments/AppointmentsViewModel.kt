@@ -31,11 +31,13 @@ data class AppointmentsUiState(
         -76.9990
     ),//Lat y Lng, incluidos en valor default
     val healthCenters: List<HealthCenter> = emptyList(),
+    val selectedCenter: HealthCenter? = null,
     val appointments: List<Appointment> = emptyList(),
     val availableSlots: List<TimeSlot> = emptyList(),
     val hasLocationPermission: Boolean = false,
     val permissionRequested: Boolean = false,
     val isLoadingLocation: Boolean = false,
+    val isLoadingCenter: Boolean = false,
     val isLoadingCenters: Boolean = false,
     val isLoadingSlots: Boolean = false,
     val isBooking: Boolean = false,
@@ -51,11 +53,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
 
     private val _state = MutableStateFlow(AppointmentsUiState())
     val state: StateFlow<AppointmentsUiState> = _state.asStateFlow()
-
-    // Coordenadas por defecto: San Juan de Lurigancho, Lima
-    init {
-        loadNearbyFacilities()
-    }
 
     // Verificacion de permiso de ubicacion
     fun hasLocationPermission(): Boolean {
@@ -75,6 +72,9 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
             )
         }
         if (isGranted) getLocation()
+        else {
+            loadNearbyFacilities()
+        }
     }
 
     //Obtiene la ubicacion del usuario
@@ -89,16 +89,17 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
             Priority.PRIORITY_HIGH_ACCURACY,
             null
         ).addOnSuccessListener { location ->
-            location?.let {
-                _state.update { state ->
-                    state.copy(
-                        userLocation = Pair(it.latitude, it.longitude),
-                        isLoadingLocation = false
-                    )
-                }
+            _state.update { state ->
+                state.copy(
+                    userLocation = location?.let { Pair(it.latitude, it.longitude) }
+                        ?: state.userLocation,
+                    isLoadingLocation = false
+                )
             }
+            loadNearbyFacilities()
         }.addOnFailureListener { e ->
             _state.update { it.copy(error = e.message, isLoadingLocation = false) }
+            loadNearbyFacilities()
         }
     }
 
@@ -124,7 +125,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                                 dto.longitude ?: 0.0
                             ),
                             distanceKm = dto.distanceKm ?: 0.0,
-                            isActive = dto.isActive ?: true,
+                            isActive = dto.status == "ACTIVE",
                             attentionDays = dto.availableDays ?: emptyList(),
                             services = dto.services ?: emptyList()
                         )
@@ -150,8 +151,50 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     }
 
     // Obtener HealthCenter por Id
-    fun getCenterById(id: String): HealthCenter? =
-        _state.value.healthCenters.firstOrNull { it.id == id }
+    fun getCenterById(id: String) {
+        viewModelScope.launch {
+            try {
+                _state.update {
+                    it.copy(
+                        isLoadingCenter = true,
+                        error = null
+                    )
+                }
+                val response = service.getFacilityDetail(id)
+                if (response.isSuccessful) {
+                    response.body()?.let { dto ->
+                        val center = HealthCenter(
+                            id = dto.id,
+                            name = dto.name,
+                            address = dto.address ?: "",
+                            phone = dto.phoneNumber ?: "",
+                            location = LatLng(
+                                dto.latitude ?: 0.0,
+                                dto.longitude ?: 0.0
+                            ),
+                            distanceKm = dto.distanceKm ?: 0.0,
+                            isActive = dto.status == "ACTIVE",
+                            attentionDays = dto.availableDays ?: emptyList(),
+                            services = dto.services ?: emptyList()
+                        )
+                        _state.update {
+                            it.copy(
+                                selectedCenter = center,
+                                isLoadingCenter = false
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoadingCenter = false,
+                        error = "Failed loading center: $e"
+                    )
+                }
+            }
+        }
+    }
 
     // ── Detalle de posta ──────────────────────────────────────────────────────
     fun loadFacilityDetail(centerId: String) {
@@ -167,7 +210,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                         phone = dto.phoneNumber ?: "",
                         location = LatLng(dto.latitude ?: 0.0, dto.longitude ?: 0.0),
                         distanceKm = dto.distanceKm ?: 0.0,
-                        isActive = dto.isActive ?: true,
+                        isActive = dto.status == "ACTIVE",
                         attentionDays = dto.availableDays ?: emptyList(),
                         services = dto.services ?: emptyList()
                     )
@@ -234,11 +277,10 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 if (response.isSuccessful) {
                     val dto = response.body()
                     val confirmedId = dto?.id ?: tempId
-                    val center = getCenterById(centerId)
                     val appointment = Appointment(
                         id = confirmedId,
                         healthCenterId = centerId,
-                        healthCenterName = center?.name ?: dto?.facilityName ?: "",
+                        healthCenterName = "",
                         patientId = patientId,
                         patientName = patientName,
                         date = date,
@@ -271,11 +313,10 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         centerId: String, patientId: String, patientName: String,
         date: LocalDate, time: String, id: String
     ) {
-        val center = getCenterById(centerId)
         val appointment = Appointment(
             id = id,
             healthCenterId = centerId,
-            healthCenterName = center?.name ?: "",
+            healthCenterName = "",
             patientId = patientId,
             patientName = patientName,
             date = date,
