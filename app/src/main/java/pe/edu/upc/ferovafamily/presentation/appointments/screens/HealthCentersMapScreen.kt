@@ -1,35 +1,66 @@
 package pe.edu.upc.ferovafamily.presentation.appointments.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocalHospital
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import pe.edu.upc.ferovafamily.R
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
 
-private val Crimson      = Color(0xFF8B1A1A)
-private val Cream        = Color(0xFFFDF8F8)
-private val SoftPink     = Color(0xFFF9E8E8)
+private val Crimson = Color(0xFF8B1A1A)
+private val Cream = Color(0xFFFDF8F8)
+private val SoftPink = Color(0xFFF9E8E8)
 private val SuccessGreen = Color(0xFF4CAF50)
 
 // ── Mapa OSMDroid (OpenStreetMap, sin API key) ────────────────────────────────
@@ -37,13 +68,17 @@ private val SuccessGreen = Color(0xFF4CAF50)
 @Composable
 private fun OSMMapView(
     centers: List<HealthCenter>,
+    center: Pair<Double, Double>,
     modifier: Modifier = Modifier
 ) {
     AndroidView(
         factory = { ctx ->
             // Configurar OSMDroid
             Configuration.getInstance().apply {
-                load(ctx, ctx.getSharedPreferences("osmdroid", android.content.Context.MODE_PRIVATE))
+                load(
+                    ctx,
+                    ctx.getSharedPreferences("osmdroid", android.content.Context.MODE_PRIVATE)
+                )
                 userAgentValue = ctx.packageName
             }
 
@@ -52,10 +87,18 @@ private fun OSMMapView(
                 setMultiTouchControls(true)
                 isTilesScaledToDpi = true
 
-                // Centrar en San Juan de Lurigancho, Lima
-                val centerPoint = GeoPoint(-12.0250, -76.9990)
+                // Centrar en la ubicacion del usuario
+                val centerPoint = GeoPoint(center.first, center.second)
                 controller.setZoom(14.0)
                 controller.setCenter(centerPoint)
+
+                //Marcador de ubicacion del usuario
+                val userLocationMarker = Marker(this).apply {
+                    position = centerPoint
+                    title = "Tu ubicación"
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    icon = ContextCompat.getDrawable(ctx, R.drawable.home)
+                }
 
                 // Marcadores de postas
                 if (centers.isNotEmpty()) {
@@ -65,21 +108,13 @@ private fun OSMMapView(
                                 center.location.latitude,
                                 center.location.longitude
                             )
-                            title   = center.name
+                            title = center.name
                             snippet = "${center.distanceKm} km · ${center.address}"
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                            icon = ContextCompat.getDrawable(ctx, R.drawable.local_hospital)
                         }
                         overlays.add(marker)
                     }
-                } else {
-                    // Marcador de referencia cuando no hay datos del API
-                    val marker = Marker(this).apply {
-                        position = centerPoint
-                        title    = "San Juan de Lurigancho"
-                        snippet  = "Lima, Perú"
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    }
-                    overlays.add(marker)
                 }
             }
         },
@@ -98,17 +133,42 @@ fun HealthCentersMapScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        viewModel.onPermissionResult(isGranted)
+    }
+
+    LaunchedEffect(Unit) {
+        if (viewModel.hasLocationPermission()) {
+            viewModel.onPermissionResult(true)
+        } else {
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // ── Mapa a pantalla completa ──────────────────
-        OSMMapView(
-            centers = state.healthCenters,
-            modifier = Modifier.fillMaxSize()
-        )
+        when {
+            state.isLoadingLocation -> {
+                CircularProgressIndicator(
+                    color = Crimson,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            else -> {
+                // ── Mapa a pantalla completa ──────────────────
+                OSMMapView(
+                    centers = state.healthCenters,
+                    center = state.userLocation,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
 
         // ── TopBar flotante ───────────────────────────
         TopAppBar(
-            title = { Text("Postas Cercanas", fontWeight = FontWeight.Bold) },
+            title = { Text("Postas encontradas" , fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 if (onBack != null) {
                     IconButton(onClick = onBack) {
@@ -133,7 +193,8 @@ fun HealthCentersMapScreen(
                 color = Crimson,
                 modifier = Modifier.align(Alignment.Center)
             )
-        } else if (state.healthCenters.isNotEmpty()) {
+        }
+        else {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -153,17 +214,36 @@ fun HealthCentersMapScreen(
                         .align(Alignment.CenterHorizontally)
                 )
                 Spacer(Modifier.height(8.dp))
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(state.healthCenters, key = { it.id }) { center ->
-                        HealthCenterListItem(
-                            center = center,
-                            onSeeDetails = { onCenterClick(center.id) }
+
+                if (state.healthCenters.isEmpty()) {
+                    // Lista vacía
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No hay postas cercanas a su ubicación",
+                            color = Color.Gray,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
                         )
                     }
-                    item { Spacer(Modifier.height(8.dp)) }
+                } else {
+                    // Lista con contenido
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(state.healthCenters, key = { it.id }) { center ->
+                            HealthCenterListItem(
+                                center = center,
+                                onSeeDetails = { onCenterClick(center.id) }
+                            )
+                        }
+                        item { Spacer(Modifier.height(8.dp)) }
+                    }
                 }
             }
         }
@@ -171,7 +251,6 @@ fun HealthCentersMapScreen(
 }
 
 // ── Card de cada posta ────────────────────────────────────────────────────────
-
 @Composable
 private fun HealthCenterListItem(
     center: HealthCenter,
@@ -211,7 +290,10 @@ private fun HealthCenterListItem(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(SuccessGreen, androidx.compose.foundation.shape.CircleShape)
+                                .background(
+                                    SuccessGreen,
+                                    androidx.compose.foundation.shape.CircleShape
+                                )
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(

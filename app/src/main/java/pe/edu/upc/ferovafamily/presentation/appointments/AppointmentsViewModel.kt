@@ -1,11 +1,14 @@
 package pe.edu.upc.ferovafamily.presentation.appointments
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,10 +26,16 @@ import java.time.LocalDate
 import java.util.UUID
 
 data class AppointmentsUiState(
-    val userLocation: Pair<Double, Double> = Pair(-12.0250,-76.9990),//Lat y Lng, incluidos en valor default
+    val userLocation: Pair<Double, Double> = Pair(
+        -12.0250,
+        -76.9990
+    ),//Lat y Lng, incluidos en valor default
     val healthCenters: List<HealthCenter> = emptyList(),
     val appointments: List<Appointment> = emptyList(),
     val availableSlots: List<TimeSlot> = emptyList(),
+    val hasLocationPermission: Boolean = false,
+    val permissionRequested: Boolean = false,
+    val isLoadingLocation: Boolean = false,
     val isLoadingCenters: Boolean = false,
     val isLoadingSlots: Boolean = false,
     val isBooking: Boolean = false,
@@ -37,15 +46,13 @@ data class AppointmentsUiState(
 class AppointmentsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val tokenManager = TokenManager.getInstance(application)
-    private val service = FerovaApiClient.create(HealthFacilitiesApiService::class.java, application)
+    private val service =
+        FerovaApiClient.create(HealthFacilitiesApiService::class.java, application)
 
     private val _state = MutableStateFlow(AppointmentsUiState())
     val state: StateFlow<AppointmentsUiState> = _state.asStateFlow()
 
     // Coordenadas por defecto: San Juan de Lurigancho, Lima
-    private val defaultLat = -12.0250
-    private val defaultLng = -76.9990
-
     init {
         loadNearbyFacilities()
     }
@@ -58,17 +65,55 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    // ── Postas cercanas ───────────────────────────────────────────────────────
+    // Actualizacion de estado
+    fun onPermissionResult(isGranted: Boolean) {
+        _state.update {
+            it.copy(
+                hasLocationPermission = isGranted,
+                permissionRequested = true,
+                isLoadingLocation = isGranted
+            )
+        }
+        if (isGranted) getLocation()
+    }
 
+    //Obtiene la ubicacion del usuario
+    @SuppressLint("MissingPermission")
+    private fun getLocation() {
+        if (!hasLocationPermission()) return
+
+        _state.update { it.copy(isLoadingLocation = true) }
+        val fusedClient = LocationServices.getFusedLocationProviderClient(getApplication())
+
+        fusedClient.getCurrentLocation(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            null
+        ).addOnSuccessListener { location ->
+            location?.let {
+                _state.update { state ->
+                    state.copy(
+                        userLocation = Pair(it.latitude, it.longitude),
+                        isLoadingLocation = false
+                    )
+                }
+            }
+        }.addOnFailureListener { e ->
+            _state.update { it.copy(error = e.message, isLoadingLocation = false) }
+        }
+    }
+
+    // ── Postas cercanas a 15 km de la ubicacion del usuario
     fun loadNearbyFacilities() {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingCenters = true, error = null) }
             val lat = _state.value.userLocation.first
             val lng = _state.value.userLocation.second
             try {
-                val response = service.getNearbyFacilities(lat,lng)
+                val response = service.getNearbyFacilities(lat, lng)
                 if (response.isSuccessful) {
-                    val centers = response.body()?.map { dto ->
+                    val centers = response.body()?.filter { dto ->
+                        (dto.distanceKm ?: Double.MAX_VALUE) <= 15.0
+                    }?.sortedBy { it.distanceKm }?.map { dto ->
                         HealthCenter(
                             id = dto.id,
                             name = dto.name,
@@ -86,50 +131,29 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                     } ?: emptyList()
                     _state.update { it.copy(healthCenters = centers, isLoadingCenters = false) }
                 } else {
-                    _state.update { it.copy(isLoadingCenters = false, error = "No se pudieron cargar las postas") }
-                    loadFallbackCenters()
+                    _state.update {
+                        it.copy(
+                            isLoadingCenters = false,
+                            error = "Failed to load facilities"
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoadingCenters = false) }
-                loadFallbackCenters()
+                _state.update {
+                    it.copy(
+                        isLoadingCenters = false,
+                        error = "Failed to load nearby facilities: $e"
+                    )
+                }
             }
         }
     }
 
-    /** Datos de respaldo si el API falla (sin conexión o error del servidor) */
-    private fun loadFallbackCenters() {
-        val centers = listOf(
-            HealthCenter(
-                id = "hc-1",
-                name = "Posta Médica Huáscar",
-                address = "Av. Huáscar 1250, SJL",
-                phone = "+51 01 234-5678",
-                location = LatLng(-12.0250, -76.9990),
-                distanceKm = 0.5,
-                isActive = true,
-                attentionDays = listOf("Lun", "Mar", "Mié", "Jue", "Vie"),
-                services = listOf("Control Crecimiento", "Pediatría", "Nutrición", "Suplementación")
-            ),
-            HealthCenter(
-                id = "hc-2",
-                name = "CS San Juan de Lurigancho",
-                address = "Av. Las Flores 480, SJL",
-                phone = "+51 01 345-6789",
-                location = LatLng(-12.0200, -77.0050),
-                distanceKm = 1.5,
-                isActive = true,
-                attentionDays = listOf("Lun", "Mié", "Vie"),
-                services = listOf("Pediatría", "Control Crecimiento", "Nutrición")
-            )
-        )
-        _state.update { it.copy(healthCenters = centers) }
-    }
-
+    // Obtener HealthCenter por Id
     fun getCenterById(id: String): HealthCenter? =
         _state.value.healthCenters.firstOrNull { it.id == id }
 
     // ── Detalle de posta ──────────────────────────────────────────────────────
-
     fun loadFacilityDetail(centerId: String) {
         viewModelScope.launch {
             try {
@@ -141,7 +165,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                         name = dto.name,
                         address = dto.address ?: "",
                         phone = dto.phoneNumber ?: "",
-                        location = LatLng(dto.latitude ?: defaultLat, dto.longitude ?: defaultLng),
+                        location = LatLng(dto.latitude ?: 0.0, dto.longitude ?: 0.0),
                         distanceKm = dto.distanceKm ?: 0.0,
                         isActive = dto.isActive ?: true,
                         attentionDays = dto.availableDays ?: emptyList(),
@@ -153,12 +177,12 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                     if (idx >= 0) current[idx] = center else current.add(center)
                     _state.update { it.copy(healthCenters = current) }
                 }
-            } catch (_: Exception) { /* mantener datos existentes */ }
+            } catch (_: Exception) { /* mantener datos existentes */
+            }
         }
     }
 
     // ── Slots disponibles ─────────────────────────────────────────────────────
-
     fun loadAvailableSlots(centerId: String, date: LocalDate) {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingSlots = true, availableSlots = emptyList()) }
@@ -172,19 +196,11 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                     _state.update { it.copy(availableSlots = slots, isLoadingSlots = false) }
                 } else {
                     _state.update { it.copy(isLoadingSlots = false) }
-                    loadFallbackSlots()
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoadingSlots = false) }
-                loadFallbackSlots()
             }
         }
-    }
-
-    private fun loadFallbackSlots() {
-        val slots = listOf("08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00")
-            .map { TimeSlot(it, true) }
-        _state.update { it.copy(availableSlots = slots) }
     }
 
     /** Para compatibilidad con pantallas que llaman este método directamente */
