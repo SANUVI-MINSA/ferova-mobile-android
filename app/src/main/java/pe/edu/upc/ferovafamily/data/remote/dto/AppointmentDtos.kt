@@ -27,7 +27,7 @@ data class HealthFacilityResponse(
     @SerializedName("services") val services: List<String>?,
     @SerializedName("availableDays") val availableDays: List<String>?,
     @SerializedName("distanceKm") val distanceKm: Double?,
-    @SerializedName("isActive") val isActive: Boolean?
+    @SerializedName("status") val status: String?
 )
 
 data class AppointmentResponse(
