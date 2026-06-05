@@ -57,9 +57,9 @@ import org.osmdroid.views.overlay.Marker
 import pe.edu.upc.ferovafamily.R
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
+import androidx.core.graphics.toColorInt
 
 private val Crimson = Color(0xFF8B1A1A)
-private val Cream = Color(0xFFFDF8F8)
 private val SoftPink = Color(0xFFF9E8E8)
 private val SuccessGreen = Color(0xFF4CAF50)
 
@@ -97,8 +97,11 @@ private fun OSMMapView(
                     position = centerPoint
                     title = "Tu ubicación"
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    icon = ContextCompat.getDrawable(ctx, R.drawable.home)
+                    icon = ContextCompat.getDrawable(ctx, R.drawable.home_pin)!!
+                        .mutate().apply { setTint("#1976D2".toColorInt()) }
+
                 }
+                overlays.add(userLocationMarker)
 
                 // Marcadores de postas
                 if (centers.isNotEmpty()) {
@@ -111,7 +114,8 @@ private fun OSMMapView(
                             title = center.name
                             snippet = "${center.distanceKm} km · ${center.address}"
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            icon = ContextCompat.getDrawable(ctx, R.drawable.local_hospital)
+                            icon = ContextCompat.getDrawable(ctx, R.drawable.map_pin_heart)!!
+                                .mutate().apply { setTint("#D32F2F".toColorInt()) }
                         }
                         overlays.add(marker)
                     }
