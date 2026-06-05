@@ -113,7 +113,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 val response = service.getNearbyFacilities(lat, lng)
                 if (response.isSuccessful) {
                     val centers = response.body()?.filter { dto ->
-                        (dto.distanceKm ?: Double.MAX_VALUE) <= 15.0
+                        (dto.distanceKm ?: Double.MAX_VALUE) <= 10.0
                     }?.sortedBy { it.distanceKm }?.map { dto ->
                         HealthCenter(
                             id = dto.id,

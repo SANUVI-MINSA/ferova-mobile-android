@@ -1,6 +1,8 @@
 package pe.edu.upc.ferovafamily.presentation.appointments.screens
 
 import android.Manifest
+import android.content.Context
+import android.graphics.drawable.BitmapDrawable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -21,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,7 +31,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -42,12 +42,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.drawable.toDrawable
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -57,69 +61,77 @@ import org.osmdroid.views.overlay.Marker
 import pe.edu.upc.ferovafamily.R
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
-import androidx.core.graphics.toColorInt
 
 private val Crimson = Color(0xFF8B1A1A)
 private val SoftPink = Color(0xFFF9E8E8)
 private val SuccessGreen = Color(0xFF4CAF50)
+
+//Funcion para mostrar correctamente los iconos en el mapa
+
+fun Context.vectorToBitmap(drawableId: Int, tintColor: Int, sizeDp: Int = 36): BitmapDrawable {
+    val sizePx = (sizeDp * resources.displayMetrics.density).toInt()
+    val drawable = ContextCompat.getDrawable(this, drawableId)!!.mutate()
+    drawable.setTint(tintColor)
+
+    val bitmap = createBitmap(sizePx, sizePx)
+    val canvas = android.graphics.Canvas(bitmap)
+    drawable.setBounds(0, 0, sizePx, sizePx)
+    drawable.draw(canvas)
+
+    return bitmap.toDrawable(resources)
+}
 
 // ── Mapa OSMDroid (OpenStreetMap, sin API key) ────────────────────────────────
 
 @Composable
 private fun OSMMapView(
     centers: List<HealthCenter>,
-    center: Pair<Double, Double>,
+    userCenter: Pair<Double, Double>,
     modifier: Modifier = Modifier
 ) {
+    val ctx = LocalContext.current
+
     AndroidView(
-        factory = { ctx ->
-            // Configurar OSMDroid
+        factory = { context ->
             Configuration.getInstance().apply {
                 load(
-                    ctx,
-                    ctx.getSharedPreferences("osmdroid", android.content.Context.MODE_PRIVATE)
+                    context,
+                    context.getSharedPreferences("osmdroid", android.content.Context.MODE_PRIVATE)
                 )
-                userAgentValue = ctx.packageName
+                userAgentValue = context.packageName
             }
 
-            MapView(ctx).apply {
+            MapView(context).apply {
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 isTilesScaledToDpi = true
 
-                // Centrar en la ubicacion del usuario
-                val centerPoint = GeoPoint(center.first, center.second)
+                val centerPoint = GeoPoint(userCenter.first, userCenter.second)
                 controller.setZoom(14.0)
                 controller.setCenter(centerPoint)
 
-                //Marcador de ubicacion del usuario
-                val userLocationMarker = Marker(this).apply {
+                // Marker del usuario
+                overlays.add(Marker(this).apply {
                     position = centerPoint
                     title = "Tu ubicación"
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    icon = ContextCompat.getDrawable(ctx, R.drawable.home_pin)!!
-                        .mutate().apply { setTint("#1976D2".toColorInt()) }
+                    icon = ctx.vectorToBitmap(R.drawable.home_pin, "#1976D2".toColorInt())
+                })
 
+                // Markers de postas
+                centers.forEach { healthCenter ->
+                    overlays.add(Marker(this).apply {
+                        position = GeoPoint(
+                            healthCenter.location.latitude,
+                            healthCenter.location.longitude
+                        )
+                        title = healthCenter.name
+                        snippet = "${healthCenter.distanceKm} km · ${healthCenter.address}"
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        icon = ctx.vectorToBitmap(R.drawable.map_pin_heart, "#D32F2F".toColorInt())
+                    })
                 }
-                overlays.add(userLocationMarker)
-
-                // Marcadores de postas
-                if (centers.isNotEmpty()) {
-                    centers.forEach { center ->
-                        val marker = Marker(this).apply {
-                            position = GeoPoint(
-                                center.location.latitude,
-                                center.location.longitude
-                            )
-                            title = center.name
-                            snippet = "${center.distanceKm} km · ${center.address}"
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                            icon = ContextCompat.getDrawable(ctx, R.drawable.map_pin_heart)!!
-                                .mutate().apply { setTint("#D32F2F".toColorInt()) }
-                        }
-                        overlays.add(marker)
-                    }
-                }
+                invalidate()
             }
         },
         modifier = modifier
@@ -131,12 +143,10 @@ private fun OSMMapView(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HealthCentersMapScreen(
-    onBack: (() -> Unit)? = null,
     onCenterClick: (centerId: String) -> Unit,
     viewModel: AppointmentsViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
-
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -154,17 +164,19 @@ fun HealthCentersMapScreen(
     Box(modifier = Modifier.fillMaxSize()) {
 
         when {
-            state.isLoadingLocation -> {
+            state.isLoadingLocation || state.isLoadingCenters -> {
                 CircularProgressIndicator(
                     color = Crimson,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+
             else -> {
+
                 // ── Mapa a pantalla completa ──────────────────
                 OSMMapView(
                     centers = state.healthCenters,
-                    center = state.userLocation,
+                    userCenter = state.userLocation,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -172,17 +184,11 @@ fun HealthCentersMapScreen(
 
         // ── TopBar flotante ───────────────────────────
         TopAppBar(
-            title = { Text("Postas encontradas" , fontWeight = FontWeight.Bold) },
-            navigationIcon = {
-                if (onBack != null) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = Crimson
-                        )
-                    }
-                }
+            title = {
+                Text(
+                    "Postas encontradas\n ${state.userLocation.first} - ${state.userLocation.second}\n${state.healthCenters.size}",
+                    fontWeight = FontWeight.Bold
+                )
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.White.copy(alpha = 0.93f),
@@ -197,8 +203,7 @@ fun HealthCentersMapScreen(
                 color = Crimson,
                 modifier = Modifier.align(Alignment.Center)
             )
-        }
-        else {
+        } else {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
