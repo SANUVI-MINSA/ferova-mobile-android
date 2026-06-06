@@ -164,7 +164,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 if (response.isSuccessful) {
                     response.body()?.let { dto ->
                         val center = HealthCenter(
-                            id = dto.id,
+                            id = id,
                             name = dto.name,
                             address = dto.address ?: "",
                             phone = dto.phoneNumber ?: "",
@@ -298,37 +298,14 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                     _state.update {
                         it.copy(isBooking = false, error = "No se pudo reservar la cita")
                     }
-                    // Fallback: guardar localmente
-                    saveLocalAppointment(centerId, patientId, patientName, date, time, tempId)
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isBooking = false) }
-                saveLocalAppointment(centerId, patientId, patientName, date, time, tempId)
             }
         }
         return tempId
     }
 
-    private fun saveLocalAppointment(
-        centerId: String, patientId: String, patientName: String,
-        date: LocalDate, time: String, id: String
-    ) {
-        val appointment = Appointment(
-            id = id,
-            healthCenterId = centerId,
-            healthCenterName = "",
-            patientId = patientId,
-            patientName = patientName,
-            date = date,
-            time = time,
-            isConfirmed = true
-        )
-        _state.update { it.copy(appointments = it.appointments + appointment, bookingSuccess = id) }
-    }
-
     fun getAppointmentById(id: String): Appointment? =
         _state.value.appointments.firstOrNull { it.id == id }
-
-    fun clearError() = _state.update { it.copy(error = null) }
-    fun clearBookingSuccess() = _state.update { it.copy(bookingSuccess = null) }
 }

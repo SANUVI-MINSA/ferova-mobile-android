@@ -313,8 +313,7 @@ fun MainScreen(
                 route = AppointmentsRoutes.HEALTH_CENTER_DETAIL,
                 arguments = listOf(navArgument("centerId") { type = NavType.StringType })
             ) { backStack ->
-                val centerId = backStack.arguments?.getString("centerId") ?: return@composable
-                Log.d("Navigation","Center Id Detail: $centerId")
+                val centerId = backStack.arguments?.getString("centerId")!!
                 HealthCenterDetailScreen(
                     centerId = centerId,
                     onBack = { navController.popBackStack() },

@@ -1,5 +1,7 @@
 package pe.edu.upc.ferovafamily.presentation.appointments.screens
 
+import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +15,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,7 +39,12 @@ fun HealthCenterDetailScreen(
     onBookAppointment: (centerId: String) -> Unit,
     viewModel: AppointmentsViewModel = viewModel()
 ) {
-    val center = viewModel.getCenterById(centerId)
+    val state by viewModel.state.collectAsState()
+    val center = state.selectedCenter
+
+    LaunchedEffect(Unit) {
+        viewModel.getCenterById(centerId)
+    }
 
     Scaffold(
         containerColor = Cream,
@@ -79,6 +88,18 @@ fun HealthCenterDetailScreen(
             }
         }
     ) { padding ->
+
+        if (state.isLoadingCenter) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Crimson)
+            }
+            return@Scaffold
+        }
         if (center == null) {
             Box(
                 modifier = Modifier
@@ -232,7 +253,7 @@ private fun ServiceChips(services: List<String>) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FlowRow(services: List<String>) {
-    androidx.compose.foundation.layout.FlowRow(
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
