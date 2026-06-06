@@ -327,7 +327,7 @@ fun MainScreen(
                 route = AppointmentsRoutes.APPOINTMENT_BOOKING,
                 arguments = listOf(navArgument("centerId") { type = NavType.StringType })
             ) { backStack ->
-                val centerId = backStack.arguments?.getString("centerId") ?: return@composable
+                val centerId = backStack.arguments?.getString("centerId")!!
                 AppointmentBookingScreen(
                     centerId = centerId,
                     onBack = { navController.popBackStack() },
