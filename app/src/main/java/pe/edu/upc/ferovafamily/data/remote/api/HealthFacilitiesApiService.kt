@@ -28,7 +28,7 @@ interface HealthFacilitiesApiService {
     suspend fun getAvailableSlots(
         @Path("facilityId") facilityId: String,
         @Query("date") date: String   // "2026-06-10"
-    ): Response<AvailableSlotsResponse>
+    ): Response<List<AvailableSlotsResponse>>
 
     @POST("api/health-facilities/appointments")
     suspend fun bookAppointment(@Body request: BookAppointmentRequest): Response<AppointmentResponse>
