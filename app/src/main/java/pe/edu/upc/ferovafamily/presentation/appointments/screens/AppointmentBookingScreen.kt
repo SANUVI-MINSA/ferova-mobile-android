@@ -1,6 +1,5 @@
 package pe.edu.upc.ferovafamily.presentation.appointments.screens
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,7 +42,6 @@ fun AppointmentBookingScreen(
     viewModel: AppointmentsViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    Log.d("Center", "Saved center: ${state.selectedCenter}")
     var selectedPatient by remember(state.patients) {
         mutableStateOf(state.patients.firstOrNull() ?: emptyMap())
     }

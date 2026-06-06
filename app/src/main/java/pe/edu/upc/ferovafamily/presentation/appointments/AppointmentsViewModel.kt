@@ -33,7 +33,7 @@ data class AppointmentsUiState(
     ),//Lat y Lng, incluidos en valor default
     val healthCenters: List<HealthCenter> = emptyList(),
     val selectedCenter: HealthCenter? = null,
-    val appointments: List<Appointment> = emptyList(),
+    val appointment: Appointment? = null,
     val availableSlots: List<TimeSlot> = emptyList(),
     val patients: List<Map<String, String>> = emptyList(),
     val hasLocationPermission: Boolean = false,
@@ -256,37 +256,42 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 val dateStr = date.toString()   // "2026-06-10"
                 val response = healthFacilitiesService.getAvailableSlots(centerId, dateStr)
                 if (response.isSuccessful) {
-                    val slots = response.body()?.slots?.map { time ->
-                        TimeSlot(time = time, isAvailable = true)
-                    } ?: emptyList()
-                    _state.update { it.copy(availableSlots = slots, isLoadingSlots = false) }
+                    response.body()?.let {
+                        val slots = it.map { dto ->
+                            TimeSlot(
+                                time = dto.time,
+                                isAvailable = dto.status == "AVAILABLE"
+                            )
+                        }
+                        _state.update { it.copy(availableSlots = slots, isLoadingSlots = false) }
+                    }
                 } else {
-                    _state.update { it.copy(isLoadingSlots = false) }
+                    _state.update {
+                        it.copy(
+                            isLoadingSlots = false,
+                            error = response.errorBody()?.string()
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isLoadingSlots = false) }
+                _state.update {
+                    it.copy(
+                        isLoadingSlots = false,
+                        error = "Failed to load available slots: $e"
+                    )
+                }
             }
         }
     }
 
-    /** Para compatibilidad con pantallas que llaman este método directamente */
-    fun getTimeSlotsFor(centerId: String, date: LocalDate): List<TimeSlot> {
-        return _state.value.availableSlots.ifEmpty {
-            listOf("08:00", "09:00", "10:00", "11:00", "14:00", "15:00", "16:00")
-                .map { TimeSlot(it, true) }
-        }
-    }
-
     // ── Reservar cita ─────────────────────────────────────────────────────────
-
     fun bookAppointment(
         centerId: String,
         patientId: String,
         patientName: String,
         date: LocalDate,
         time: String
-    ): String {
-        val tempId = UUID.randomUUID().toString()
+    ) {
         viewModelScope.launch {
             _state.update { it.copy(isBooking = true, error = null) }
             try {
@@ -299,7 +304,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 val response = healthFacilitiesService.bookAppointment(request)
                 if (response.isSuccessful) {
                     val dto = response.body()
-                    val confirmedId = dto?.id ?: tempId
+                    val confirmedId = response.body()?.id ?: ""
                     val appointment = Appointment(
                         id = confirmedId,
                         healthCenterId = centerId,
@@ -312,23 +317,29 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                     )
                     _state.update {
                         it.copy(
-                            appointments = it.appointments + appointment,
+                            appointment = appointment,
                             isBooking = false,
                             bookingSuccess = confirmedId
                         )
                     }
                 } else {
                     _state.update {
-                        it.copy(isBooking = false, error = "No se pudo reservar la cita")
+                        it.copy(
+                            isBooking = false,
+                            error = "No se pudo reservar la cita: ${
+                                response.errorBody()?.toString()
+                            }"
+                        )
                     }
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(isBooking = false) }
+                _state.update {
+                    it.copy(
+                        isBooking = false,
+                        error = "Failed to create appointment: $e"
+                    )
+                }
             }
         }
-        return tempId
     }
-
-    fun getAppointmentById(id: String): Appointment? =
-        _state.value.appointments.firstOrNull { it.id == id }
 }
