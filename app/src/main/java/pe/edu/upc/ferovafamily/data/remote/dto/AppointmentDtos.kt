@@ -42,5 +42,6 @@ data class AppointmentResponse(
 )
 
 data class AvailableSlotsResponse(
-    @SerializedName("slots") val slots: List<String>?
+    @SerializedName("time") val time: String,
+    @SerializedName("status") val status: String
 )
