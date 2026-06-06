@@ -29,12 +29,6 @@ private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
 private val SoftPink = Color(0xFFF9E8E8)
 
-private data class Patient(val id: String, val name: String)
-
-private val patientsMock = listOf(
-    Patient("child-1", "Mateo"),
-    Patient("child-2", "Lucia")
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +37,7 @@ fun AppointmentBookingScreen(
     onBack: () -> Unit,
     onContinue: (patientId: String, dateIso: String) -> Unit
 ) {
-    var selectedPatient by remember { mutableStateOf(patientsMock.first()) }
+
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
