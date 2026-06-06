@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import pe.edu.upc.ferovafamily.data.local.TokenManager
 import pe.edu.upc.ferovafamily.data.remote.FerovaApiClient
 import pe.edu.upc.ferovafamily.data.remote.api.HealthFacilitiesApiService
+import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
 import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentRequest
 import pe.edu.upc.ferovafamily.presentation.appointments.model.Appointment
 import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
@@ -34,11 +35,13 @@ data class AppointmentsUiState(
     val selectedCenter: HealthCenter? = null,
     val appointments: List<Appointment> = emptyList(),
     val availableSlots: List<TimeSlot> = emptyList(),
+    val patients: List<Map<String, String>> = emptyList(),
     val hasLocationPermission: Boolean = false,
     val permissionRequested: Boolean = false,
     val isLoadingLocation: Boolean = false,
     val isLoadingCenter: Boolean = false,
     val isLoadingCenters: Boolean = false,
+    val isLoadingPatients: Boolean = false,
     val isLoadingSlots: Boolean = false,
     val isBooking: Boolean = false,
     val error: String? = null,
@@ -48,8 +51,11 @@ data class AppointmentsUiState(
 class AppointmentsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val tokenManager = TokenManager.getInstance(application)
-    private val service =
+    private val healthFacilitiesService =
         FerovaApiClient.create(HealthFacilitiesApiService::class.java, application)
+
+    private val patientService =
+        FerovaApiClient.create(PatientApiService::class.java, application)
 
     private val _state = MutableStateFlow(AppointmentsUiState())
     val state: StateFlow<AppointmentsUiState> = _state.asStateFlow()
@@ -103,14 +109,14 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // ── Postas cercanas a 15 km de la ubicacion del usuario
+    // ── Postas cercanas a 10 km de la ubicacion del usuario
     fun loadNearbyFacilities() {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingCenters = true, error = null) }
             val lat = _state.value.userLocation.first
             val lng = _state.value.userLocation.second
             try {
-                val response = service.getNearbyFacilities(lat, lng)
+                val response = healthFacilitiesService.getNearbyFacilities(lat, lng)
                 if (response.isSuccessful) {
                     val centers = response.body()?.filter { dto ->
                         (dto.distanceKm ?: Double.MAX_VALUE) <= 10.0
@@ -160,7 +166,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                         error = null
                     )
                 }
-                val response = service.getFacilityDetail(id)
+                val response = healthFacilitiesService.getFacilityDetail(id)
                 if (response.isSuccessful) {
                     response.body()?.let { dto ->
                         val center = HealthCenter(
@@ -196,13 +202,45 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    // Obtener pacientes
+    fun getPatients() {
+        viewModelScope.launch {
+            try {
+                _state.update {
+                    it.copy(
+                        isLoadingPatients = true,
+                        error = null
+                    )
+                }
+                val response = patientService.getMotherPatients()
+                if (response.isSuccessful) {
+                    response.body()?.let { dto ->
+                        _state.update {
+                            it.copy(
+                                patients = dto.patients,
+                                isLoadingPatients = false
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoadingPatients = false,
+                        error = "Failed loading patients: $e"
+                    )
+                }
+            }
+        }
+    }
+
     // ── Slots disponibles ─────────────────────────────────────────────────────
     fun loadAvailableSlots(centerId: String, date: LocalDate) {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingSlots = true, availableSlots = emptyList()) }
             try {
                 val dateStr = date.toString()   // "2026-06-10"
-                val response = service.getAvailableSlots(centerId, dateStr)
+                val response = healthFacilitiesService.getAvailableSlots(centerId, dateStr)
                 if (response.isSuccessful) {
                     val slots = response.body()?.slots?.map { time ->
                         TimeSlot(time = time, isAvailable = true)
@@ -244,7 +282,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                     appointmentDate = date.toString(),
                     appointmentTime = time
                 )
-                val response = service.bookAppointment(request)
+                val response = healthFacilitiesService.bookAppointment(request)
                 if (response.isSuccessful) {
                     val dto = response.body()
                     val confirmedId = dto?.id ?: tempId
