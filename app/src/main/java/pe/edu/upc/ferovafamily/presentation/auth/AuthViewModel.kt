@@ -75,8 +75,39 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                 tokenManager.userLastName  = user.lastname
                                 tokenManager.userRole      = user.role
                                 tokenManager.userEmail     = user.email
+
+                                // Validacion del rol
+                                when (user.role) {
+                                    "Mother" -> {
+                                        // Exito - Usuario madre
+                                        _uiState.update {it.copy(loginResult = AuthResult.Success)}
+                                    }
+
+                                    "Admin", "Nurse" -> {
+                                        // Erro - Usuario no autorizado para esta app
+                                       tokenManager.clear() // Limpiar todas las credenciales
+
+                                       _uiState.update {
+                                           it.copy(loginResult = AuthResult.Error(
+                                               "ACCESO DENEGADO " + "FerovaFamily es exclusiva para madres.\n\n"
+                                           ))
+                                       }
+                                    }
+
+                                    else -> {
+                                        tokenManager.clear()
+                                        _uiState.update {
+                                            it.copy(loginResult = AuthResult.Error(
+                                                "Rol de usuario no válido para esta aplicación"
+                                            ))
+                                        }
+                                    }
+                                }
+                                return@launch
                             }
-                        } catch (_: Exception) { /* el token es suficiente para continuar */ }
+                        } catch (_: Exception) {
+                            // Si falla obtener usuario, asumimos que es madre (por compatibilidad)
+                            _uiState.update { it.copy(loginResult = AuthResult.Success) }                        }
                     }
                     _uiState.update { it.copy(loginResult = AuthResult.Success) }
                 } else {
