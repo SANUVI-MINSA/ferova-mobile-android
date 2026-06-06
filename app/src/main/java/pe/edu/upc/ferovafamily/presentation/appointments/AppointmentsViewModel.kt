@@ -196,35 +196,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // ── Detalle de posta ──────────────────────────────────────────────────────
-    fun loadFacilityDetail(centerId: String) {
-        viewModelScope.launch {
-            try {
-                val response = service.getFacilityDetail(centerId)
-                if (response.isSuccessful) {
-                    val dto = response.body() ?: return@launch
-                    val center = HealthCenter(
-                        id = dto.id,
-                        name = dto.name,
-                        address = dto.address ?: "",
-                        phone = dto.phoneNumber ?: "",
-                        location = LatLng(dto.latitude ?: 0.0, dto.longitude ?: 0.0),
-                        distanceKm = dto.distanceKm ?: 0.0,
-                        isActive = dto.status == "ACTIVE",
-                        attentionDays = dto.availableDays ?: emptyList(),
-                        services = dto.services ?: emptyList()
-                    )
-                    // Actualizar o agregar al listado si no existe
-                    val current = _state.value.healthCenters.toMutableList()
-                    val idx = current.indexOfFirst { it.id == centerId }
-                    if (idx >= 0) current[idx] = center else current.add(center)
-                    _state.update { it.copy(healthCenters = current) }
-                }
-            } catch (_: Exception) { /* mantener datos existentes */
-            }
-        }
-    }
-
     // ── Slots disponibles ─────────────────────────────────────────────────────
     fun loadAvailableSlots(centerId: String, date: LocalDate) {
         viewModelScope.launch {
