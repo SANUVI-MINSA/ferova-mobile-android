@@ -27,3 +27,8 @@ data class PatientResponse(
     @SerializedName("nurseId") val nurseId: String?,
     @SerializedName("motherId") val motherId: String?
 )
+
+data class MyPatientsResponse(
+    @SerializedName("motherId") val motherId: String,
+    @SerializedName("patients") val patients: List<Map<String, String>>
+)
