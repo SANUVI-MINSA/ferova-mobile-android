@@ -105,34 +105,38 @@ private fun OSMMapView(
                 setTileSource(TileSourceFactory.MAPNIK)
                 setMultiTouchControls(true)
                 isTilesScaledToDpi = true
-
-                val centerPoint = GeoPoint(userCenter.first, userCenter.second)
-                controller.setZoom(14.0)
-                controller.setCenter(centerPoint)
-
-                // Marker del usuario
-                overlays.add(Marker(this).apply {
-                    position = centerPoint
-                    title = "Tu ubicación"
-                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    icon = ctx.vectorToBitmap(R.drawable.home_pin, "#1976D2".toColorInt())
-                })
-
-                // Markers de postas
-                centers.forEach { healthCenter ->
-                    overlays.add(Marker(this).apply {
-                        position = GeoPoint(
-                            healthCenter.location.latitude,
-                            healthCenter.location.longitude
-                        )
-                        title = healthCenter.name
-                        snippet = "${healthCenter.distanceKm} km · ${healthCenter.address}"
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        icon = ctx.vectorToBitmap(R.drawable.map_pin_heart, "#D32F2F".toColorInt())
-                    })
-                }
-                invalidate()
             }
+        },
+        update = { view ->
+            val centerPoint = GeoPoint(userCenter.first, userCenter.second)
+            view.controller.setZoom(14.0)
+            view.controller.setCenter(centerPoint)
+
+            // Limpiar overlays para no duplicarlos en cada actualización
+            view.overlays.clear()
+
+            // Marker del usuario
+            view.overlays.add(Marker(view).apply {
+                position = centerPoint
+                title = "Tu ubicación"
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                icon = ctx.vectorToBitmap(R.drawable.home_pin, "#1976D2".toColorInt())
+            })
+
+            // Markers de postas
+            centers.forEach { healthCenter ->
+                view.overlays.add(Marker(view).apply {
+                    position = GeoPoint(
+                        healthCenter.location.latitude,
+                        healthCenter.location.longitude
+                    )
+                    title = healthCenter.name
+                    snippet = "${healthCenter.distanceKm} km · ${healthCenter.address}"
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    icon = ctx.vectorToBitmap(R.drawable.map_pin_heart, "#D32F2F".toColorInt())
+                })
+            }
+            view.invalidate()
         },
         modifier = modifier
     )
@@ -163,22 +167,22 @@ fun HealthCentersMapScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        when {
-            state.isLoadingLocation || state.isLoadingCenters -> {
-                CircularProgressIndicator(
-                    color = Crimson,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+        // ── Mapa siempre presente para evitar reinicializaciones costosas ──
+        OSMMapView(
+            centers = state.healthCenters,
+            userCenter = state.userLocation,
+            modifier = Modifier.fillMaxSize()
+        )
 
-            else -> {
-
-                // ── Mapa a pantalla completa ──────────────────
-                OSMMapView(
-                    centers = state.healthCenters,
-                    userCenter = state.userLocation,
-                    modifier = Modifier.fillMaxSize()
-                )
+        // Pantalla de carga inicial (solo si no tenemos datos aún)
+        if ((state.isLoadingLocation || state.isLoadingCenters) && state.healthCenters.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Crimson)
             }
         }
 
@@ -198,34 +202,44 @@ fun HealthCentersMapScreen(
         )
 
         // ── Lista flotante inferior ───────────────────
-        if (state.isLoadingCenters) {
-            CircularProgressIndicator(
-                color = Crimson,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        } else {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .heightIn(max = 300.dp)
-                    .background(
-                        Color.White.copy(alpha = 0.97f),
-                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-                    )
-                    .padding(top = 8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .background(Color.LightGray, RoundedCornerShape(2.dp))
-                        .align(Alignment.CenterHorizontally)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .heightIn(max = 300.dp)
+                .background(
+                    Color.White.copy(alpha = 0.97f),
+                    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                 )
-                Spacer(Modifier.height(8.dp))
+                .padding(top = 8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(Color.LightGray, RoundedCornerShape(2.dp))
+                    .align(Alignment.CenterHorizontally)
+            )
 
-                if (state.healthCenters.isEmpty()) {
-                    // Lista vacía
+            Spacer(Modifier.height(8.dp))
+
+            when {
+                state.isLoadingCenters -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = Crimson,
+                            modifier = Modifier.size(28.dp),
+                            strokeWidth = 2.5.dp
+                        )
+                    }
+                }
+
+                state.healthCenters.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -239,8 +253,9 @@ fun HealthCentersMapScreen(
                             textAlign = TextAlign.Center
                         )
                     }
-                } else {
-                    // Lista con contenido
+                }
+
+                else -> {
                     LazyColumn(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -253,6 +268,7 @@ fun HealthCentersMapScreen(
                         }
                         item { Spacer(Modifier.height(8.dp)) }
                     }
+
                 }
             }
         }

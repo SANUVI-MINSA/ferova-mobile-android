@@ -91,8 +91,29 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         _state.update { it.copy(isLoadingLocation = true) }
         val fusedClient = LocationServices.getFusedLocationProviderClient(getApplication())
 
+        // 1. Intentar obtener la última ubicación conocida (es casi instantáneo)
+        fusedClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                _state.update { state ->
+                    state.copy(
+                        userLocation = Pair(location.latitude, location.longitude),
+                        isLoadingLocation = false
+                    )
+                }
+                loadNearbyFacilities()
+            } else {
+                // 2. Si no hay ubicación previa, solicitar la ubicación actual
+                requestCurrentLocation(fusedClient)
+            }
+        }.addOnFailureListener {
+            requestCurrentLocation(fusedClient)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun requestCurrentLocation(fusedClient: com.google.android.gms.location.FusedLocationProviderClient) {
         fusedClient.getCurrentLocation(
-            Priority.PRIORITY_HIGH_ACCURACY,
+            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
             null
         ).addOnSuccessListener { location ->
             _state.update { state ->
@@ -137,13 +158,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                         )
                     } ?: emptyList()
                     _state.update { it.copy(healthCenters = centers, isLoadingCenters = false) }
-                } else {
-                    _state.update {
-                        it.copy(
-                            isLoadingCenters = false,
-                            error = "Failed to load facilities"
-                        )
-                    }
                 }
             } catch (e: Exception) {
                 _state.update {
