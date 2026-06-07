@@ -52,6 +52,46 @@ fun TimeSlotSelectionScreen(
     LaunchedEffect(Unit) {
         viewModel.loadAvailableSlots(centerId, date)
         viewModel.getPatients()
+        viewModel.getCenterById(centerId)
+    }
+
+    LaunchedEffect(state.bookingSuccess) {
+        state.bookingSuccess?.let { confirmedId ->
+            onConfirm(confirmedId) // navega cuando el state se actualice
+        }
+    }
+
+    state.error?.let { errorMessage ->
+        AlertDialog(
+            onDismissRequest = { },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    "No se pudo reservar",
+                    fontWeight = FontWeight.Bold,
+                    color = Crimson
+                )
+            },
+            text = {
+                Text(
+                    text = errorMessage,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearError()
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Crimson),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Volver al inicio", color = Color.White)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -81,12 +121,12 @@ fun TimeSlotSelectionScreen(
                         selectedSlot?.let { slot ->
                             viewModel.bookAppointment(
                                 centerId = centerId,
+                                centerName = state.selectedCenter?.name ?: "",
                                 patientId = patientId,
                                 patientName = patient?.get("name") ?: "",
                                 date = date,
                                 time = slot.time
                             )
-                            if (state.bookingSuccess != null) onConfirm(state.bookingSuccess!!)
                         }
                     },
                     enabled = selectedSlot != null,
@@ -110,7 +150,7 @@ fun TimeSlotSelectionScreen(
         }
     ) { padding ->
 
-        if (state.isLoadingPatients || state.isLoadingSlots) {
+        if (state.isLoadingPatients || state.isLoadingSlots || state.isLoadingCenter) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
