@@ -1,6 +1,9 @@
 package pe.edu.upc.ferovafamily.data.remote.api
 
-import pe.edu.upc.ferovafamily.data.remote.dto.MyPatientsResponse
+import pe.edu.upc.ferovafamily.data.remote.dto.CreateMedicalRecordRequest
+import pe.edu.upc.ferovafamily.data.remote.dto.HemoglobinControlRequest
+import pe.edu.upc.ferovafamily.data.remote.dto.HemoglobinRecordDto
+import pe.edu.upc.ferovafamily.data.remote.dto.MyPatientsResponseDto
 import pe.edu.upc.ferovafamily.data.remote.dto.PatientResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.RegisterPatientRequest
 import retrofit2.Response
@@ -17,6 +20,24 @@ interface PatientApiService {
     @GET("api/patients/mother/{motherId}")
     suspend fun getPatientsByMother(@Path("motherId") motherId: String): Response<List<PatientResponse>>
 
+    /** Devuelve { motherId, patients: [{id, name}] } */
     @GET("api/patients/my-patients")
-    suspend fun getMotherPatients(): Response<MyPatientsResponse>
+    suspend fun getMyPatients(): Response<MyPatientsResponseDto>
+
+    @GET("api/patients/{patientId}/hemoglobin-evolution")
+    suspend fun getHemoglobinEvolution(
+        @Path("patientId") patientId: String
+    ): Response<List<HemoglobinRecordDto>>
+
+    /** NURSE only — crea el expediente médico inicial */
+    @POST("api/patients/medical-record")
+    suspend fun createMedicalRecord(
+        @Body request: CreateMedicalRecordRequest
+    ): Response<PatientResponse>
+
+    /** NURSE only — registra un control de hemoglobina */
+    @POST("api/patients/hemoglobin-control")
+    suspend fun registerHemoglobinControl(
+        @Body request: HemoglobinControlRequest
+    ): Response<HemoglobinRecordDto>
 }

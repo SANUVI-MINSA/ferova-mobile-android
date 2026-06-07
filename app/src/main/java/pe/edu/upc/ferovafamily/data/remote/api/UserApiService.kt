@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.data.remote.api
 
+import pe.edu.upc.ferovafamily.data.remote.dto.EmailRequest
 import pe.edu.upc.ferovafamily.data.remote.dto.LoginRequest
 import pe.edu.upc.ferovafamily.data.remote.dto.LoginResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.MessageResponse
@@ -33,4 +34,7 @@ interface UserApiService {
 
     @POST("api/users/password/reset")
     suspend fun resetPassword(@Body request: ResetPasswordRequest): Response<MessageResponse>
+
+    @GET("api/users/email/{email}")
+    suspend fun getUserByEmail(@Path("email") email: String): Response<UserResponse>
 }

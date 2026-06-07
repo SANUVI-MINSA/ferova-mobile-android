@@ -9,6 +9,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
+// Test:       https://backend-ferova-test.up.railway.app/
+// Producción: https://backend-ferova-production-187b.up.railway.app/
 private const val BASE_URL = "https://backend-ferova-test.up.railway.app/"
 
 /**
@@ -59,4 +61,7 @@ object FerovaApiClient {
 
     fun <T> create(serviceClass: Class<T>, context: Context): T =
         getRetrofit(context).create(serviceClass)
+
+    /** Forzar recreación del cliente (útil al cambiar de entorno) */
+    fun reset() { retrofit = null }
 }

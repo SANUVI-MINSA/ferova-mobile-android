@@ -48,50 +48,88 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── Login ─────────────────────────────────────────────────────────────────
 
+// Reemplaza la función login completa (líneas 52-125) con esto:
+
     fun login(dni: String, password: String) {
         if (dni.isBlank() || password.isBlank()) {
             _uiState.update { it.copy(loginResult = AuthResult.Error("Completa todos los campos")) }
             return
         }
+
         viewModelScope.launch {
             _uiState.update { it.copy(loginResult = AuthResult.Loading) }
-            try {
-                val response = userService.login(LoginRequest(dni.trim(), password))
-                if (response.isSuccessful) {
-                    val token = response.body()!!.token
-                    tokenManager.token = token
 
-                    // El backend solo devuelve el token. Extraemos el userId del payload JWT
-                    // y luego llamamos a GET /api/users/{id} para obtener nombre/rol.
-                    val userId = decodeJwtField(token, "id")
-                        ?: decodeJwtField(token, "motherId")
-                    if (userId != null) {
-                        tokenManager.userId = userId
-                        try {
-                            val userResp = userService.getUserById(userId)
-                            if (userResp.isSuccessful) {
-                                val user = userResp.body()!!
-                                tokenManager.userName      = user.name
-                                tokenManager.userLastName  = user.lastname
-                                tokenManager.userRole      = user.role
-                                tokenManager.userEmail     = user.email
-                            }
-                        } catch (_: Exception) { /* el token es suficiente para continuar */ }
-                    }
-                    _uiState.update { it.copy(loginResult = AuthResult.Success) }
-                } else {
-                    val backendMsg = parseErrorBody(response.errorBody())
-                    val msg = backendMsg ?: when (response.code()) {
+            try {
+                // 1. Login
+                val response = userService.login(LoginRequest(dni.trim(), password))
+
+                if (!response.isSuccessful) {
+                    val msg = parseErrorBody(response.errorBody()) ?: when (response.code()) {
                         401 -> "DNI o contraseña incorrectos"
                         404 -> "Usuario no encontrado"
                         else -> "Error al iniciar sesión (${response.code()})"
                     }
                     _uiState.update { it.copy(loginResult = AuthResult.Error(msg)) }
+                    return@launch
                 }
+
+                val token = response.body()!!.token
+                tokenManager.token = token
+
+                // 2. Decodificar JWT (esto es rápido, está bien en main thread)
+                val userId = decodeJwtField(token, "id") ?: decodeJwtField(token, "motherId")
+
+                if (userId == null) {
+                    _uiState.update {
+                        it.copy(loginResult = AuthResult.Error("Token inválido: no se encontró userId"))
+                    }
+                    return@launch
+                }
+
+                tokenManager.userId = userId
+
+                // 3. Obtener usuario (esto ya está en coroutine)
+                val userResp = userService.getUserById(userId)
+
+                if (!userResp.isSuccessful) {
+                    // Si falla pero es madre (modo compatibilidad)
+                    _uiState.update { it.copy(loginResult = AuthResult.Success) }
+                    return@launch
+                }
+
+                val user = userResp.body()!!
+                tokenManager.userName = user.name
+                tokenManager.userLastName = user.lastname
+                tokenManager.userRole = user.role
+                tokenManager.userEmail = user.email
+
+                // 4. Validar rol - CORREGIDO
+                when (user.role) {
+                    "Mother" -> {
+                        _uiState.update { it.copy(loginResult = AuthResult.Success) }
+                    }
+                    "Admin", "Nurse" -> {
+                        tokenManager.clear()
+                        _uiState.update {
+                            it.copy(loginResult = AuthResult.Error(
+                                "ACCESO DENEGADO\n\nFerovaFamily es exclusiva para madres.\n\nTu cuenta es de tipo: ${user.role}"
+                            ))
+                        }
+                    }
+                    else -> {
+                        tokenManager.clear()
+                        _uiState.update {
+                            it.copy(loginResult = AuthResult.Error(
+                                "Rol de usuario no válido para esta aplicación: ${user.role}"
+                            ))
+                        }
+                    }
+                }
+
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(loginResult = AuthResult.Error(
-                        "Error: ${e.javaClass.simpleName} - ${e.message}"
+                        "Error de conexión: ${e.message ?: "Verifica tu internet"}"
                     ))
                 }
             }
@@ -198,19 +236,54 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.update { it.copy(requestCodeResult = AuthResult.Loading) }
             try {
+                android.util.Log.d("RECOVERY_DEBUG", "1. Email enviado: '${email.trim()}'")
+
+                // 1. Verificar si el usuario existe y obtener su rol
+                val userResponse = userService.getUserByEmail(email.trim())
+
+
+                if (!userResponse.isSuccessful || userResponse.body() == null) {
+                    _uiState.update {
+                        it.copy(requestCodeResult = AuthResult.Error("Correo no registrado en el sistema"))
+                    }
+                    return@launch
+                }
+
+                val user = userResponse.body()!!
+                android.util.Log.d("RECOVERY_DEBUG", "5. Usuario: ${user.email}, Rol: ${user.role}")
+
+
+                // 2. Validar que sea MADRE
+                if (user.role != "Mother") {
+                    _uiState.update {
+                        it.copy(requestCodeResult = AuthResult.Error(
+                                    "ACCESO DENEGADO\n\n" +
+                                    "Este correo pertenece a: ${user.role}\n" +
+                                    "La recuperación de contraseña es solo para madres.\n\n"
+                        ))
+                    }
+                    return@launch
+                }
+
+                android.util.Log.d("RECOVERY_DEBUG", "6. Enviando código para: ${email.trim()}")
+                // 3. Es madre, enviar código de recuperación
                 val response = userService.requestPasswordCode(RequestPasswordCodeRequest(email.trim()))
+
+                android.util.Log.d("RECOVERY_DEBUG", "7. Código respuesta: ${response.code()}")
+                android.util.Log.d("RECOVERY_DEBUG", "8. isSuccessful: ${response.isSuccessful}")
+
                 if (response.isSuccessful) {
-                    // Guardar email para las siguientes pantallas
                     tokenManager.recoveryEmail = email.trim()
                     _uiState.update { it.copy(requestCodeResult = AuthResult.Success) }
                 } else {
                     _uiState.update {
-                        it.copy(requestCodeResult = AuthResult.Error("Correo no encontrado"))
+                        it.copy(requestCodeResult = AuthResult.Error("Error al enviar el código. Intenta nuevamente."))
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("RECOVERY_DEBUG", "Excepción: ${e.message}", e)
                 _uiState.update {
-                    it.copy(requestCodeResult = AuthResult.Error("Sin conexión. Revisa tu internet."))
+                    it.copy(requestCodeResult = AuthResult.Error("Error: ${e.message}"))
                 }
             }
         }

@@ -14,6 +14,9 @@ import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,8 +37,12 @@ private val PureBlack = Color(0xFF000000) // #000
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TreatmentTrackingScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: TreatmentViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    val historyGrouped = viewModel.doseHistoryGrouped
+
     Scaffold(
         containerColor = Cream,
         topBar = {
@@ -60,59 +67,52 @@ fun TreatmentTrackingScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-        ) {
-            Spacer(Modifier.height(16.dp))
+        if (uiState.isLoading) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Crimson)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+            ) {
+                Spacer(Modifier.height(16.dp))
 
-            // ─── Tarjeta del Niño ───
-            ChildMedicationCard()
+                // ─── Tarjeta del Niño ───
+                ChildMedicationCard()
 
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
-            // ─── Sección: HOY ───
-            SectionHeader("HOY")
-            DoseHistoryItem(
-                time = "08:00 AM",
-                detail = "Confirmada a las 08:15 AM",
-                status = DoseStatus.Confirmed
-            )
+                // ─── Secciones por fecha (datos reales o mock) ───
+                if (historyGrouped.isEmpty()) {
+                    Text(
+                        "Sin historial de dosis",
+                        color = Color.Gray,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    historyGrouped.forEach { (date, records) ->
+                        SectionHeader(date)
+                        records.forEach { record ->
+                            val isConfirmed = record.status == "CONFIRMED"
+                            DoseHistoryItem(
+                                time   = record.confirmedAt ?: "08:00 AM",
+                                detail = if (isConfirmed)
+                                    "Confirmada a las ${record.confirmedAt ?: ""}"
+                                else
+                                    "Omitida — Sin confirmación",
+                                status = if (isConfirmed) DoseStatus.Confirmed else DoseStatus.Omitted
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
 
-            Spacer(Modifier.height(16.dp))
-
-            // ─── Sección: AYER ───
-            SectionHeader("AYER")
-            DoseHistoryItem(
-                time = "08:00 PM",
-                detail = "Omitida — Sin confirmación",
-                status = DoseStatus.Omitted
-            )
-            DoseHistoryItem(
-                time = "08:00 AM",
-                detail = "Confirmada a las 08:05 AM",
-                status = DoseStatus.Confirmed
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            // ─── Sección: 15 ABR ───
-            SectionHeader("15 ABR")
-            DoseHistoryItem(
-                time = "08:00 PM",
-                detail = "Omitida — Sin confirmación",
-                status = DoseStatus.Omitted
-            )
-            DoseHistoryItem(
-                time = "08:00 AM",
-                detail = "Confirmada a las 08:05 AM",
-                status = DoseStatus.Confirmed
-            )
-
-            Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(32.dp))
+            }
         }
     }
 }
