@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import pe.edu.upc.ferovafamily.data.local.TokenManager
 import pe.edu.upc.ferovafamily.data.remote.FerovaApiClient
 import pe.edu.upc.ferovafamily.data.remote.api.HealthFacilitiesApiService
@@ -111,7 +113,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     }
 
     @SuppressLint("MissingPermission")
-    private fun requestCurrentLocation(fusedClient: com.google.android.gms.location.FusedLocationProviderClient) {
+    private fun requestCurrentLocation(fusedClient: FusedLocationProviderClient) {
         fusedClient.getCurrentLocation(
             Priority.PRIORITY_BALANCED_POWER_ACCURACY,
             null
@@ -284,16 +286,30 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    //Traduccion del texto de error
+    private fun translateError(errorMessage: String): String {
+        return when {
+            errorMessage.contains("This schedule is already reserved") ->
+                "El horario elegido ya está ocupado"
+
+            errorMessage.contains("This facility has no assigned nurse") ->
+                "La posta no tiene un enfermero designado"
+
+            else -> "No se pudo reservar la cita"
+        }
+    }
+
     // ── Reservar cita ─────────────────────────────────────────────────────────
     fun bookAppointment(
         centerId: String,
+        centerName: String,
         patientId: String,
         patientName: String,
         date: LocalDate,
         time: String
     ) {
         viewModelScope.launch {
-            _state.update { it.copy(isBooking = true, error = null) }
+            _state.update { it.copy(isBooking = true, error = null, bookingSuccess = null) }
             try {
                 val request = BookAppointmentRequest(
                     facilityId = centerId,
@@ -303,32 +319,35 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 )
                 val response = healthFacilitiesService.bookAppointment(request)
                 if (response.isSuccessful) {
-                    val dto = response.body()
-                    val confirmedId = response.body()?.id ?: ""
-                    val appointment = Appointment(
-                        id = confirmedId,
-                        healthCenterId = centerId,
-                        healthCenterName = "",
-                        patientId = patientId,
-                        patientName = patientName,
-                        date = date,
-                        time = time,
-                        isConfirmed = true
-                    )
-                    _state.update {
-                        it.copy(
-                            appointment = appointment,
-                            isBooking = false,
-                            bookingSuccess = confirmedId
+                    response.body()?.let {
+                        val appointment = Appointment(
+                            id = "",
+                            healthCenterId = centerId,
+                            healthCenterName = centerName,
+                            patientId = patientId,
+                            patientName = patientName,
+                            date = date,
+                            time = time,
                         )
+                        _state.update {
+                            it.copy(
+                                appointment = appointment,
+                                isBooking = false,
+                                bookingSuccess = "OK"
+                            )
+                        }
                     }
                 } else {
+                    val errorBody = response.errorBody()?.string()
+                    val rawError = try {
+                        JSONObject(errorBody ?: "").getString("error")
+                    } catch (e: Exception) {
+                        ""
+                    }
                     _state.update {
                         it.copy(
                             isBooking = false,
-                            error = "No se pudo reservar la cita: ${
-                                response.errorBody()?.toString()
-                            }"
+                            error = translateError(rawError)
                         )
                     }
                 }
@@ -341,5 +360,9 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 }
             }
         }
+    }
+
+    fun clearError() {
+        _state.update { it.copy(error = null) }
     }
 }
