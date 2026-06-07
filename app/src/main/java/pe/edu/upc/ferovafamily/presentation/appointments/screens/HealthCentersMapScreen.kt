@@ -133,7 +133,7 @@ private fun OSMMapView(
                     title = healthCenter.name
                     snippet = "${healthCenter.distanceKm} km · ${healthCenter.address}"
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    icon = ctx.vectorToBitmap(R.drawable.map_pin_heart, "#D32F2F".toColorInt())
+                    icon = ctx.vectorToBitmap(R.drawable.map_pin_heart, "#8B1A1A".toColorInt())
                 })
             }
             view.invalidate()
