@@ -41,6 +41,11 @@ data class AppointmentResponse(
     @SerializedName("status") val status: String?
 )
 
+data class BookAppointmentResponse(
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error") val error: String? = null
+)
+
 data class AvailableSlotsResponse(
     @SerializedName("time") val time: String,
     @SerializedName("status") val status: String
