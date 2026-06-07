@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,11 +32,12 @@ private val SoftPink = Color(0xFFF9E8E8)
 
 @Composable
 fun AppointmentConfirmedScreen(
-    appointmentId: String,
     onBackToHome: () -> Unit,
-    viewModel: AppointmentsViewModel = viewModel()
+    viewModel: AppointmentsViewModel
 ) {
-    val appointment = viewModel.getAppointmentById(appointmentId)
+
+    val state by viewModel.state.collectAsState()
+    val appointment = state.appointment
 
     Surface(modifier = Modifier.fillMaxSize(), color = Cream) {
         if (appointment == null) {
@@ -96,7 +99,10 @@ fun AppointmentConfirmedScreen(
                         label = "CENTRO MEDICO",
                         value = appointment.healthCenterName
                     )
-                    HorizontalDivider(color = SoftPink, modifier = Modifier.padding(vertical = 12.dp))
+                    HorizontalDivider(
+                        color = SoftPink,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
 
                     Row(modifier = Modifier.fillMaxWidth()) {
                         DetailRow(
@@ -115,7 +121,10 @@ fun AppointmentConfirmedScreen(
                         )
                     }
 
-                    HorizontalDivider(color = SoftPink, modifier = Modifier.padding(vertical = 12.dp))
+                    HorizontalDivider(
+                        color = SoftPink,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
 
                     DetailRow(
                         icon = Icons.Default.Person,
