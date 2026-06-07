@@ -31,14 +31,12 @@ data class HealthFacilityResponse(
 )
 
 data class AppointmentResponse(
-    @SerializedName("id") val id: String,
-    @SerializedName("facilityId") val facilityId: String?,
+    @SerializedName("appointmentId") val id: String,
     @SerializedName("facilityName") val facilityName: String?,
     @SerializedName("patientId") val patientId: String?,
-    @SerializedName("patientName") val patientName: String?,
     @SerializedName("appointmentDate") val appointmentDate: String?,
     @SerializedName("appointmentTime") val appointmentTime: String?,
-    @SerializedName("status") val status: String?
+    @SerializedName("status") val status: String?,
 )
 
 data class BookAppointmentResponse(
@@ -46,7 +44,22 @@ data class BookAppointmentResponse(
     @SerializedName("error") val error: String? = null
 )
 
+data class CancelAppointmentResponse(
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("error") val error: String? = null
+)
+
 data class AvailableSlotsResponse(
     @SerializedName("time") val time: String,
     @SerializedName("status") val status: String
+)
+
+data class NextAppointmentResponse(
+    @SerializedName("appointmentId") val id: String,
+    @SerializedName("appointmentDate") val appointmentDate: String?,
+    @SerializedName("appointmentTime") val appointmentTime: String?,
+    @SerializedName("patientId") val patientId: String?,
+    @SerializedName("facilityName") val facilityName: String?,
+    @SerializedName("status") val status: String?,
+    @SerializedName("message") val message: String? = null,
 )

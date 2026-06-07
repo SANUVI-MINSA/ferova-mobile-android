@@ -5,7 +5,9 @@ import pe.edu.upc.ferovafamily.data.remote.dto.AvailableSlotsResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentRequest
 import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.CancelAppointmentRequest
+import pe.edu.upc.ferovafamily.data.remote.dto.CancelAppointmentResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.HealthFacilityResponse
+import pe.edu.upc.ferovafamily.data.remote.dto.NextAppointmentResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -32,14 +34,20 @@ interface HealthFacilitiesApiService {
     ): Response<List<AvailableSlotsResponse>>
 
     @POST("api/health-facilities/appointments")
-    suspend fun bookAppointment(@Body request: BookAppointmentRequest): Response<BookAppointmentResponse>
+    suspend fun bookAppointment(
+        @Body request: BookAppointmentRequest
+    ): Response<BookAppointmentResponse>
 
     @PUT("api/health-facilities/appointments/cancel")
-    suspend fun cancelAppointment(@Body request: CancelAppointmentRequest): Response<AppointmentResponse>
+    suspend fun cancelAppointment(
+        @Body request: CancelAppointmentRequest
+    ): Response<CancelAppointmentResponse>
 
     @GET("api/health-facilities/patient/{patientId}/appointments")
-    suspend fun getPatientAppointments(@Path("patientId") patientId: String): Response<List<AppointmentResponse>>
+    suspend fun getPatientAppointments(
+        @Path("patientId") patientId: String
+    ): Response<List<AppointmentResponse>>
 
     @GET("api/health-facilities/appointments/mother/next")
-    suspend fun getMotherNextAppointment(): Response<AppointmentResponse>
+    suspend fun getMotherNextAppointment(): Response<NextAppointmentResponse>
 }
