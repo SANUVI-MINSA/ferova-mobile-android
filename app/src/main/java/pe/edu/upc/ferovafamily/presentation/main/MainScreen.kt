@@ -376,16 +376,12 @@ fun MainScreen(
 
             composable(
                 route = AppointmentsRoutes.APPOINTMENT_CONFIRMED,
-                arguments = listOf(navArgument("appointmentId") { type = NavType.StringType })
             ) { backStack ->
-                val appointmentId =
-                    backStack.arguments?.getString("appointmentId") ?: return@composable
                 val parentEntry = remember(backStack) {
                     navController.getBackStackEntry(MainRoutes.APPOINTMENTS)
                 }
                 val viewModel: AppointmentsViewModel = viewModel(parentEntry)
                 AppointmentConfirmedScreen(
-                    appointmentId = appointmentId,
                     onBackToHome = {
                         navController.navigate(MainRoutes.HOME) {
                             popUpTo(MainRoutes.HOME) { inclusive = true }
