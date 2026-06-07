@@ -61,7 +61,6 @@ fun MainScreen(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
-    // ViewModel compartido para todo el flujo de citas
     val appointmentsViewModel: AppointmentsViewModel = viewModel()
 
     // El bottom bar sólo se muestra en las pantallas raíz de cada tab
