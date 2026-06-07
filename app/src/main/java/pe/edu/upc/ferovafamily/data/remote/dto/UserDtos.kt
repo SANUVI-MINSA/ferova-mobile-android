@@ -55,3 +55,7 @@ data class UserResponse(
 data class MessageResponse(
     @SerializedName("message") val message: String
 )
+
+data class EmailRequest(
+    @SerializedName("email") val email: String
+)

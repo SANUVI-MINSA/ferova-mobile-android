@@ -145,6 +145,16 @@ fun RecoveryPasswordScreen(
                 color = White.copy(alpha = 0.75f),
                 textAlign = TextAlign.Center
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Solo madres pueden recuperar su contraseña",
+                fontSize = 11.sp,
+                color = White.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+
         }
 
         // ── Card blanca ──────────────────────────────
