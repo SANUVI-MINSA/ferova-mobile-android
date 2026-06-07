@@ -1,6 +1,5 @@
 package pe.edu.upc.ferovafamily.presentation.main
 
-import android.util.Log
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentBookingScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,6 +37,7 @@ import pe.edu.upc.ferovafamily.presentation.progress.screens.StreakLostScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsRoutes
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentConfirmedScreen
+import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentsScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCenterDetailScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCentersMapScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.TimeSlotSelectionScreen
@@ -60,6 +60,9 @@ fun MainScreen(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    // ViewModel compartido para todo el flujo de citas
+    val appointmentsViewModel: AppointmentsViewModel = viewModel()
 
     // El bottom bar sólo se muestra en las pantallas raíz de cada tab
     val showBottomBar = currentRoute in BottomNavItem.items.map { it.route }
@@ -124,7 +127,7 @@ fun MainScreen(
                         navController.navigate(MainRoutes.NOTIFICATIONS)
                     },
                     onNavigateToHealthCenters = {
-                        navController.navigate(MainRoutes.APPOINTMENTS)
+                        navController.navigate(AppointmentsRoutes.HEALTH_CENTERS_MAP)
                     },
                     onLogout = onLogout
                 )
@@ -144,10 +147,11 @@ fun MainScreen(
 
             // Tab: Citas — mapa de postas + flujo de agendar cita
             composable(MainRoutes.APPOINTMENTS) {
-                HealthCentersMapScreen(
-                    onCenterClick = { centerId ->
-                        navController.navigate(AppointmentsRoutes.healthCenterDetail(centerId))
-                    }
+                AppointmentsScreen(
+                    onScheduleAppointment = {
+                        navController.navigate(AppointmentsRoutes.HEALTH_CENTERS_MAP)
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
 
@@ -314,6 +318,18 @@ fun MainScreen(
             }
 
             // ──────────── SUBPANTALLAS: CITAS Y POSTAS ────────────
+
+            composable(
+                route = AppointmentsRoutes.HEALTH_CENTERS_MAP
+            ) {
+                HealthCentersMapScreen(
+                    onCenterClick = { centerId ->
+                        navController.navigate(AppointmentsRoutes.healthCenterDetail(centerId))
+                    },
+                    viewModel = appointmentsViewModel
+                )
+            }
+
             composable(
                 route = AppointmentsRoutes.HEALTH_CENTER_DETAIL,
                 arguments = listOf(navArgument("centerId") { type = NavType.StringType })
@@ -324,7 +340,8 @@ fun MainScreen(
                     onBack = { navController.popBackStack() },
                     onBookAppointment = { id ->
                         navController.navigate(AppointmentsRoutes.appointmentBooking(id))
-                    }
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
 
@@ -337,10 +354,12 @@ fun MainScreen(
                     centerId = centerId,
                     onBack = { navController.popBackStack() },
                     onContinue = { patientId, dateIso ->
+                        appointmentsViewModel.resetBookingState()
                         navController.navigate(
                             AppointmentsRoutes.timeSlotSelection(centerId, patientId, dateIso)
                         )
-                    }
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
 
@@ -355,17 +374,13 @@ fun MainScreen(
                 val centerId = backStack.arguments?.getString("centerId") ?: return@composable
                 val patientId = backStack.arguments?.getString("patientId") ?: return@composable
                 val dateIso = backStack.arguments?.getString("dateIso") ?: return@composable
-                val parentEntry = remember(backStack) {
-                    navController.getBackStackEntry(MainRoutes.APPOINTMENTS)
-                }
-                val viewModel: AppointmentsViewModel = viewModel(parentEntry)
 
                 TimeSlotSelectionScreen(
                     centerId = centerId,
                     patientId = patientId,
                     dateIso = dateIso,
                     onBack = { navController.popBackStack() },
-                    viewModel = viewModel,
+                    viewModel = appointmentsViewModel,
                     onConfirm = { appointmentId ->
                         navController.navigate(AppointmentsRoutes.appointmentConfirmed(appointmentId)) {
                             popUpTo(MainRoutes.APPOINTMENTS)
@@ -376,18 +391,14 @@ fun MainScreen(
 
             composable(
                 route = AppointmentsRoutes.APPOINTMENT_CONFIRMED,
-            ) { backStack ->
-                val parentEntry = remember(backStack) {
-                    navController.getBackStackEntry(MainRoutes.APPOINTMENTS)
-                }
-                val viewModel: AppointmentsViewModel = viewModel(parentEntry)
+            ) {
                 AppointmentConfirmedScreen(
                     onBackToHome = {
                         navController.navigate(MainRoutes.HOME) {
                             popUpTo(MainRoutes.HOME) { inclusive = true }
                         }
                     },
-                    viewModel = viewModel
+                    viewModel = appointmentsViewModel
                 )
             }
         }
