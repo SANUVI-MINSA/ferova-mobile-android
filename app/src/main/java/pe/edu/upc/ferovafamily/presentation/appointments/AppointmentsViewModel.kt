@@ -235,13 +235,19 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 }
                 val response = patientService.getMotherPatients()
                 if (response.isSuccessful) {
-                    response.body()?.let { dto ->
-                        _state.update {
-                            it.copy(
-                                patients = dto.patients,
-                                isLoadingPatients = false
-                            )
-                        }
+                    val dto = response.body()
+                    _state.update {
+                        it.copy(
+                            patients = dto?.patients ?: emptyList(),
+                            isLoadingPatients = false
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isLoadingPatients = false,
+                            error = "Error al cargar pacientes"
+                        )
                     }
                 }
             } catch (e: Exception) {
@@ -258,9 +264,16 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     // ── Slots disponibles ─────────────────────────────────────────────────────
     fun loadAvailableSlots(centerId: String, date: LocalDate) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoadingSlots = true, availableSlots = emptyList()) }
+            _state.update {
+                it.copy(
+                    isLoadingSlots = true,
+                    availableSlots = emptyList(),
+                    bookingSuccess = null,
+                    appointment = null
+                )
+            }
             try {
-                val dateStr = date.toString()   // "2026-06-10"
+                val dateStr = date.toString()
                 val response = healthFacilitiesService.getAvailableSlots(centerId, dateStr)
                 if (response.isSuccessful) {
                     response.body()?.let { slots ->
@@ -326,23 +339,21 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 )
                 val response = healthFacilitiesService.bookAppointment(request)
                 if (response.isSuccessful) {
-                    response.body()?.let {
-                        val appointment = Appointment(
-                            id = "",
-                            healthCenterId = centerId,
-                            healthCenterName = centerName,
-                            patientId = patientId,
-                            patientName = patientName,
-                            date = date,
-                            time = time,
+                    val appointment = Appointment(
+                        id = "",
+                        healthCenterId = centerId,
+                        healthCenterName = centerName,
+                        patientId = patientId,
+                        patientName = patientName,
+                        date = date,
+                        time = time,
+                    )
+                    _state.update {
+                        it.copy(
+                            appointment = appointment,
+                            isBooking = false,
+                            bookingSuccess = "OK"
                         )
-                        _state.update {
-                            it.copy(
-                                appointment = appointment,
-                                isBooking = false,
-                                bookingSuccess = "OK"
-                            )
-                        }
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
@@ -529,5 +540,15 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     // ── Limpiar mensaje de cancelacion al cerrar popup ────────────────────────────────────
     fun clearCancelMessage() {
         _state.update { it.copy(cancelMessage = null) }
+    }
+
+    //Limpiar el estado de reserva (éxito y cita creada)
+    fun resetBookingState() {
+        _state.update { it.copy(bookingSuccess = null, appointment = null) }
+    }
+
+    //Eliminar la cita siguiente
+    fun clearNextAppointment() {
+        _state.update { it.copy(nextAppointment = null) }
     }
 }
