@@ -78,7 +78,10 @@ fun AppointmentBookingScreen(
                 Button(
                     onClick = {
                         selectedDate?.let { date ->
-                            onContinue(selectedPatient["id"]!!, date.toString())
+                            val patientId = selectedPatient["id"]
+                            if (patientId != null) {
+                                onContinue(patientId, date.toString())
+                            }
                         }
                     },
                     modifier = Modifier
@@ -203,7 +206,7 @@ private fun PatientAvatar(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = patient["name"]!!,
+            text = patient["name"] ?: "Sin nombre",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = if (isSelected) Crimson else Color.DarkGray
