@@ -355,7 +355,7 @@ fun PatientSelectorSection(
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 patients.forEach { patient ->
-                    val isSelected = patient.name == selectedPatientId
+                    val isSelected = patient.id == selectedPatientId
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable {
