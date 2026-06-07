@@ -17,27 +17,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import pe.edu.upc.ferovafamily.data.local.TokenManager
 import pe.edu.upc.ferovafamily.data.remote.FerovaApiClient
 import pe.edu.upc.ferovafamily.data.remote.api.HealthFacilitiesApiService
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
 import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentRequest
+import pe.edu.upc.ferovafamily.data.remote.dto.CancelAppointmentRequest
 import pe.edu.upc.ferovafamily.presentation.appointments.model.Appointment
 import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
 import pe.edu.upc.ferovafamily.presentation.appointments.model.TimeSlot
 import java.time.LocalDate
-import java.util.UUID
 
 data class AppointmentsUiState(
     val userLocation: Pair<Double, Double> = Pair(
         -12.0250,
         -76.9990
     ),//Lat y Lng, incluidos en valor default
+    val appointmentHistory: List<Appointment> = emptyList(),
+    val nextAppointment: Appointment? = null,
+    val cancelMessage: String? = null,
     val healthCenters: List<HealthCenter> = emptyList(),
     val selectedCenter: HealthCenter? = null,
     val appointment: Appointment? = null,
     val availableSlots: List<TimeSlot> = emptyList(),
     val patients: List<Map<String, String>> = emptyList(),
+    val isLoadingNextAppointment: Boolean = false,
+    val isLoadingAppointmentHistory: Boolean = false,
+    val isCancelingAppointment: Boolean = false,
+    val showCancelDialog: Boolean = false,
     val hasLocationPermission: Boolean = false,
     val permissionRequested: Boolean = false,
     val isLoadingLocation: Boolean = false,
@@ -47,12 +53,11 @@ data class AppointmentsUiState(
     val isLoadingSlots: Boolean = false,
     val isBooking: Boolean = false,
     val error: String? = null,
-    val bookingSuccess: String? = null   // appointmentId confirmado
+    val bookingSuccess: String? = null,   // appointmentId confirmado
 )
 
 class AppointmentsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val tokenManager = TokenManager.getInstance(application)
     private val healthFacilitiesService =
         FerovaApiClient.create(HealthFacilitiesApiService::class.java, application)
 
@@ -258,8 +263,8 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 val dateStr = date.toString()   // "2026-06-10"
                 val response = healthFacilitiesService.getAvailableSlots(centerId, dateStr)
                 if (response.isSuccessful) {
-                    response.body()?.let {
-                        val slots = it.map { dto ->
+                    response.body()?.let { slots ->
+                        val slots = slots.map { dto ->
                             TimeSlot(
                                 time = dto.time,
                                 isAvailable = dto.status == "AVAILABLE"
@@ -295,7 +300,9 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
             errorMessage.contains("This facility has no assigned nurse") ->
                 "La posta no tiene un enfermero designado"
 
-            else -> "No se pudo reservar la cita"
+            errorMessage.contains("Appointment not found") -> "La cita no existe"
+
+            else -> "Error desconocido"
         }
     }
 
@@ -341,7 +348,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                     val errorBody = response.errorBody()?.string()
                     val rawError = try {
                         JSONObject(errorBody ?: "").getString("error")
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         ""
                     }
                     _state.update {
@@ -364,5 +371,163 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    // Obtener siguiente cita medica
+    fun loadNextAppointment() {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isLoadingNextAppointment = true,
+                    error = null
+                )
+            }
+            try {
+                val response = healthFacilitiesService.getMotherNextAppointment()
+                if (response.isSuccessful) {
+                    response.body()?.let { dto ->
+                        if (dto.message != null) {
+                            // No hay cita próxima
+                            _state.update {
+                                it.copy(
+                                    nextAppointment = null,
+                                    isLoadingNextAppointment = false
+                                )
+                            }
+                        } else {
+                            // Hay cita próxima
+                            _state.update {
+                                it.copy(
+                                    nextAppointment = Appointment(
+                                        id = dto.id,
+                                        healthCenterId = "",
+                                        healthCenterName = dto.facilityName ?: "",
+                                        patientId = dto.patientId ?: "",
+                                        patientName = "",
+                                        date = LocalDate.parse(
+                                            dto.appointmentDate ?: LocalDate.now().toString()
+                                        ),
+                                        time = dto.appointmentTime ?: "",
+                                        isConfirmed = dto.status == "CONFIRMED"
+                                    ),
+                                    isLoadingNextAppointment = false
+                                )
+                            }
+                        }
+                    } ?: _state.update { it.copy(isLoadingNextAppointment = false) }
+                } else {
+                    _state.update { it.copy(isLoadingNextAppointment = false) }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoadingNextAppointment = false,
+                        error = "Failed to load next appointment: $e"
+                    )
+                }
+            }
+        }
+    }
+
+    //Obtener historial de citas
+    fun loadAppointmentHistory(patientId: String) {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isLoadingAppointmentHistory = true,
+                    error = null,
+                )
+            }
+            try {
+                val response = healthFacilitiesService.getPatientAppointments(patientId)
+                if (response.isSuccessful) {
+                    response.body()?.let { appointments ->
+                        val history = appointments.map { dto ->
+                            Appointment(
+                                id = dto.id,
+                                healthCenterId = "",
+                                healthCenterName = dto.facilityName ?: "",
+                                patientId = dto.patientId ?: "",
+                                patientName = "",
+                                date = LocalDate.parse(
+                                    dto.appointmentDate ?: LocalDate.now().toString()
+                                ),
+                                time = dto.appointmentTime ?: "",
+                                isConfirmed = dto.status == "CONFIRMED"
+                            )
+                        }
+                        _state.update {
+                            it.copy(
+                                appointmentHistory = history,
+                                isLoadingAppointmentHistory = false
+                            )
+                        }
+                    } ?: _state.update { it.copy(isLoadingAppointmentHistory = false) }
+                } else {
+                    _state.update { it.copy(isLoadingAppointmentHistory = false) }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoadingAppointmentHistory = false,
+                        error = "Failed to load appointment history: $e"
+                    )
+                }
+            }
+        }
+    }
+
+    //Cancelar cita
+    fun cancelAppointment(appointmentId: String) {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isCancelingAppointment = true,
+                    error = null
+                )
+            }
+            try {
+                val request = CancelAppointmentRequest(appointmentId)
+                val response = healthFacilitiesService.cancelAppointment(request)
+                if (response.isSuccessful) {
+                    response.body()?.let {
+                        val message = it.message!!
+                        _state.update { state ->
+                            state.copy(
+                                isCancelingAppointment = false,
+                                showCancelDialog = false,
+                                cancelMessage = message
+                            )
+                        }
+                    }
+
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    val rawError = try {
+                        JSONObject(errorBody ?: "").getString("error")
+                    } catch (_: Exception) {
+                        ""
+                    }
+                    _state.update {
+                        it.copy(
+                            isBooking = false,
+                            error = translateError(rawError)
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isCancelingAppointment = false,
+                        error = "Failed to cancel appointment: $e"
+                    )
+                }
+            }
+        }
+    }
+
+    // ── Limpiar mensaje de cancelacion al cerrar popup ────────────────────────────────────
+    fun clearCancelMessage() {
+        _state.update { it.copy(cancelMessage = null) }
     }
 }
