@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
-import pe.edu.upc.ferovafamily.presentation.appointments.model.TimeSlot
+import pe.edu.upc.ferovafamily.domain.model.appointments.TimeSlot
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -42,7 +42,7 @@ fun TimeSlotSelectionScreen(
 
     val state by viewModel.state.collectAsState()
     val patient = remember(state.patients) {
-        state.patients.find { it["id"] == patientId }
+        state.patients.find { it.id == patientId }
     }
     val date = remember(dateIso) { LocalDate.parse(dateIso) }
     var selectedSlot by remember { mutableStateOf<TimeSlot?>(null) }
@@ -123,7 +123,7 @@ fun TimeSlotSelectionScreen(
                                 centerId = centerId,
                                 centerName = state.selectedCenter?.name ?: "",
                                 patientId = patientId,
-                                patientName = patient?.get("name") ?: "",
+                                patientName = patient?.name ?: "",
                                 date = date,
                                 time = slot.time
                             )

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.domain.model.Patient
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -43,7 +44,7 @@ fun AppointmentBookingScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var selectedPatient by remember(state.patients) {
-        mutableStateOf(state.patients.firstOrNull() ?: emptyMap())
+        mutableStateOf(state.patients.firstOrNull())
     }
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
@@ -78,7 +79,7 @@ fun AppointmentBookingScreen(
                 Button(
                     onClick = {
                         selectedDate?.let { date ->
-                            val patientId = selectedPatient["id"]
+                            val patientId = selectedPatient?.id
                             if (patientId != null) {
                                 onContinue(patientId, date.toString())
                             }
@@ -130,7 +131,7 @@ fun AppointmentBookingScreen(
                 state.patients.forEach { patient ->
                     PatientAvatar(
                         patient = patient,
-                        isSelected = patient["id"] == selectedPatient["id"],
+                        isSelected = patient.id == selectedPatient?.id,
                         onClick = { selectedPatient = patient }
                     )
                 }
@@ -181,7 +182,7 @@ fun AppointmentBookingScreen(
 
 @Composable
 private fun PatientAvatar(
-    patient: Map<String, String>,
+    patient: Patient,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -206,7 +207,7 @@ private fun PatientAvatar(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = patient["name"] ?: "Sin nombre",
+            text = patient.name,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = if (isSelected) Crimson else Color.DarkGray

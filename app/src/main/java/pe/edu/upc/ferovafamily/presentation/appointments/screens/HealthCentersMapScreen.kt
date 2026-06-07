@@ -60,7 +60,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import pe.edu.upc.ferovafamily.R
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
-import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
+import pe.edu.upc.ferovafamily.domain.model.appointments.HealthCenter
 
 private val Crimson = Color(0xFF8B1A1A)
 private val SoftPink = Color(0xFFF9E8E8)
@@ -96,7 +96,7 @@ private fun OSMMapView(
             Configuration.getInstance().apply {
                 load(
                     context,
-                    context.getSharedPreferences("osmdroid", android.content.Context.MODE_PRIVATE)
+                    context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
                 )
                 userAgentValue = context.packageName
             }

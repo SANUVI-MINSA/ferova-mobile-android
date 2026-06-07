@@ -1,4 +1,4 @@
-package pe.edu.upc.ferovafamily.presentation.appointments.model
+package pe.edu.upc.ferovafamily.domain.model.appointments
 
 data class TimeSlot(
     val time: String,        // "08:00", "09:00"

@@ -6,17 +6,17 @@ import com.google.gson.annotations.SerializedName
 
 // POST /api/patients/medical-record  (NURSE only)
 data class CreateMedicalRecordRequest(
-    @SerializedName("patientId")         val patientId: String,
+    @SerializedName("patientId") val patientId: String,
     @SerializedName("initialHemoglobin") val initialHemoglobin: Double,
-    @SerializedName("diagnosis")         val diagnosis: String,
-    @SerializedName("notes")             val notes: String? = null
+    @SerializedName("diagnosis") val diagnosis: String,
+    @SerializedName("notes") val notes: String? = null
 )
 
 // POST /api/patients/hemoglobin-control  (NURSE only)
 data class HemoglobinControlRequest(
-    @SerializedName("patientId")      val patientId: String,
+    @SerializedName("patientId") val patientId: String,
     @SerializedName("hemoglobinLevel") val hemoglobinLevel: Double,
-    @SerializedName("controlDate")    val controlDate: String     // "yyyy-MM-dd"
+    @SerializedName("controlDate") val controlDate: String     // "yyyy-MM-dd"
 )
 
 data class RegisterPatientRequest(
@@ -32,21 +32,21 @@ data class RegisterPatientRequest(
 // ── Responses ─────────────────────────────────────────────────────────────────
 
 data class HemoglobinRecordDto(
-    @SerializedName("date")  val date: String?,
+    @SerializedName("date") val date: String?,
     @SerializedName("value") val value: Float?,
-    @SerializedName("unit")  val unit: String?
+    @SerializedName("unit") val unit: String?
 )
 
 data class PatientResponse(
-    @SerializedName("id")        val id: String,
-    @SerializedName("name")      val name: String,
-    @SerializedName("lastName")  val lastName: String  = "",
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("lastName") val lastName: String = "",
     @SerializedName("birthDate") val birthDate: String? = null,
-    @SerializedName("gender")    val gender: String?    = null,
-    @SerializedName("weight")    val weight: Double?    = null,
-    @SerializedName("height")    val height: Double?    = null,
-    @SerializedName("nurseId")   val nurseId: String?   = null,
-    @SerializedName("motherId")  val motherId: String?  = null
+    @SerializedName("gender") val gender: String? = null,
+    @SerializedName("weight") val weight: Double? = null,
+    @SerializedName("height") val height: Double? = null,
+    @SerializedName("nurseId") val nurseId: String? = null,
+    @SerializedName("motherId") val motherId: String? = null
 )
 
 // Respuesta real de GET /api/patients/my-patients:
@@ -54,9 +54,4 @@ data class PatientResponse(
 data class MyPatientsResponseDto(
     @SerializedName("motherId") val motherId: String?,
     @SerializedName("patients") val patients: List<PatientResponse>?
-)
-
-data class MyPatientsResponse(
-    @SerializedName("motherId") val motherId: String,
-    @SerializedName("patients") val patients: List<Map<String, String>>
 )

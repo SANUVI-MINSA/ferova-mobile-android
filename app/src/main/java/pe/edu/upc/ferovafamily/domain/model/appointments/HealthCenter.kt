@@ -1,4 +1,4 @@
-package pe.edu.upc.ferovafamily.presentation.appointments.model
+package pe.edu.upc.ferovafamily.domain.model.appointments
 
 import com.google.android.gms.maps.model.LatLng
 

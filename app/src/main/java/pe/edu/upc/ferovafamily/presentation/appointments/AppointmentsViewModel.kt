@@ -22,9 +22,10 @@ import pe.edu.upc.ferovafamily.data.remote.api.HealthFacilitiesApiService
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
 import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentRequest
 import pe.edu.upc.ferovafamily.data.remote.dto.CancelAppointmentRequest
-import pe.edu.upc.ferovafamily.presentation.appointments.model.Appointment
-import pe.edu.upc.ferovafamily.presentation.appointments.model.HealthCenter
-import pe.edu.upc.ferovafamily.presentation.appointments.model.TimeSlot
+import pe.edu.upc.ferovafamily.domain.model.Patient
+import pe.edu.upc.ferovafamily.domain.model.appointments.Appointment
+import pe.edu.upc.ferovafamily.domain.model.appointments.HealthCenter
+import pe.edu.upc.ferovafamily.domain.model.appointments.TimeSlot
 import java.time.LocalDate
 
 data class AppointmentsUiState(
@@ -39,7 +40,7 @@ data class AppointmentsUiState(
     val selectedCenter: HealthCenter? = null,
     val appointment: Appointment? = null,
     val availableSlots: List<TimeSlot> = emptyList(),
-    val patients: List<Map<String, String>> = emptyList(),
+    val patients: List<Patient> = emptyList(),
     val isLoadingNextAppointment: Boolean = false,
     val isLoadingAppointmentHistory: Boolean = false,
     val isCancelingAppointment: Boolean = false,
@@ -233,12 +234,25 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                         error = null
                     )
                 }
-                val response = patientService.getMotherPatients()
+                val response = patientService.getMyPatients()
                 if (response.isSuccessful) {
                     val dto = response.body()
+                    val patientsDto = dto?.patients ?: emptyList()
+                    val patients = patientsDto.map { patientDto ->
+                        Patient(
+                            id = patientDto.id,
+                            name = patientDto.name,
+                            lastName = "",
+                            birthDate = "",
+                            gender = "",
+                            weight = 0.0,
+                            height = 0.0,
+                            motherId = ""
+                        )
+                    }
                     _state.update {
                         it.copy(
-                            patients = dto?.patients ?: emptyList(),
+                            patients = patients,
                             isLoadingPatients = false
                         )
                     }

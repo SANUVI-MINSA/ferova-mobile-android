@@ -21,8 +21,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.domain.model.Patient
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
-import pe.edu.upc.ferovafamily.presentation.appointments.model.Appointment
+import pe.edu.upc.ferovafamily.domain.model.appointments.Appointment
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -96,7 +97,7 @@ fun AppointmentsScreen(
 
     //Seleccion de id de paciente
     var selectedPatientId by remember(state.patients) {
-        mutableStateOf(state.patients.firstOrNull()?.get("id") ?: "")
+        mutableStateOf(state.patients.firstOrNull()?.id ?: "")
     }
     var cancelingPatientId by remember { mutableStateOf("") }
 
@@ -130,8 +131,8 @@ fun AppointmentsScreen(
     val nextAppointmentWithName = remember(state.nextAppointment, state.patients) {
         state.nextAppointment?.let { appointment ->
             val patientName = state.patients
-                .find { it["id"] == appointment.patientId }
-                ?.get("name") ?: ""
+                .find { it.id == appointment.patientId }
+                ?.name ?: ""
             appointment.copy(patientName = patientName)
         }
     }
@@ -334,7 +335,7 @@ fun AppointmentsScreen(
 // ── Selector de pacientes ─────────────────────────────────────
 @Composable
 fun PatientSelectorSection(
-    patients: List<Map<String, String>>,
+    patients: List<Patient>,
     selectedPatientId: String,
     onPatientSelected: (String) -> Unit
 ) {
@@ -354,11 +355,11 @@ fun PatientSelectorSection(
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 patients.forEach { patient ->
-                    val isSelected = patient["id"] == selectedPatientId
+                    val isSelected = patient.name == selectedPatientId
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable {
-                            onPatientSelected(patient["id"] ?: "")
+                            onPatientSelected(patient.id)
                         }
                     ) {
                         Box(
@@ -382,7 +383,7 @@ fun PatientSelectorSection(
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = patient["name"] ?: "",
+                            text = patient.name,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) Crimson else Color.Gray
