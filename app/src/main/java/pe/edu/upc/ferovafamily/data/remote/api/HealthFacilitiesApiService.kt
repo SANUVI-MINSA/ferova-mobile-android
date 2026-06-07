@@ -3,6 +3,7 @@ package pe.edu.upc.ferovafamily.data.remote.api
 import pe.edu.upc.ferovafamily.data.remote.dto.AppointmentResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.AvailableSlotsResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentRequest
+import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentResponse
 import pe.edu.upc.ferovafamily.data.remote.dto.CancelAppointmentRequest
 import pe.edu.upc.ferovafamily.data.remote.dto.HealthFacilityResponse
 import retrofit2.Response
@@ -31,7 +32,7 @@ interface HealthFacilitiesApiService {
     ): Response<List<AvailableSlotsResponse>>
 
     @POST("api/health-facilities/appointments")
-    suspend fun bookAppointment(@Body request: BookAppointmentRequest): Response<AppointmentResponse>
+    suspend fun bookAppointment(@Body request: BookAppointmentRequest): Response<BookAppointmentResponse>
 
     @PUT("api/health-facilities/appointments/cancel")
     suspend fun cancelAppointment(@Body request: CancelAppointmentRequest): Response<AppointmentResponse>
