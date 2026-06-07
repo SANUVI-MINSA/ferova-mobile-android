@@ -19,6 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -29,23 +32,26 @@ private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
 private val SoftPink = Color(0xFFF9E8E8)
 
-private data class Patient(val id: String, val name: String)
-
-private val patientsMock = listOf(
-    Patient("child-1", "Mateo"),
-    Patient("child-2", "Lucia")
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppointmentBookingScreen(
     centerId: String,
     onBack: () -> Unit,
-    onContinue: (patientId: String, dateIso: String) -> Unit
+    onContinue: (patientId: String, dateIso: String) -> Unit,
+    viewModel: AppointmentsViewModel = viewModel()
 ) {
-    var selectedPatient by remember { mutableStateOf(patientsMock.first()) }
+    val state by viewModel.state.collectAsState()
+    var selectedPatient by remember(state.patients) {
+        mutableStateOf(state.patients.firstOrNull() ?: emptyMap())
+    }
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.getPatients()
+        viewModel.getCenterById(centerId)
+    }
 
     Scaffold(
         containerColor = Cream,
@@ -71,8 +77,11 @@ fun AppointmentBookingScreen(
             Surface(color = Cream) {
                 Button(
                     onClick = {
-                        selectedDate?.let {
-                            onContinue(selectedPatient.id, it.toString())
+                        selectedDate?.let { date ->
+                            val patientId = selectedPatient["id"]
+                            if (patientId != null) {
+                                onContinue(patientId, date.toString())
+                            }
                         }
                     },
                     modifier = Modifier
@@ -95,6 +104,20 @@ fun AppointmentBookingScreen(
             }
         }
     ) { padding ->
+
+        //Pantalla de carga hasta cargar pacientes
+        if (state.isLoadingPatients || state.isLoadingCenter) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Crimson)
+            }
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -104,10 +127,10 @@ fun AppointmentBookingScreen(
             Text("Selecionar Paciente", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                patientsMock.forEach { patient ->
+                state.patients.forEach { patient ->
                     PatientAvatar(
                         patient = patient,
-                        isSelected = patient.id == selectedPatient.id,
+                        isSelected = patient["id"] == selectedPatient["id"],
                         onClick = { selectedPatient = patient }
                     )
                 }
@@ -149,7 +172,8 @@ fun AppointmentBookingScreen(
             CalendarGrid(
                 month = currentMonth,
                 selectedDate = selectedDate,
-                onDateSelected = { selectedDate = it }
+                onDateSelected = { selectedDate = it },
+                availableDays = state.selectedCenter?.attentionDays ?: emptyList()
             )
         }
     }
@@ -157,7 +181,7 @@ fun AppointmentBookingScreen(
 
 @Composable
 private fun PatientAvatar(
-    patient: Patient,
+    patient: Map<String, String>,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -182,7 +206,7 @@ private fun PatientAvatar(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = patient.name,
+            text = patient["name"] ?: "Sin nombre",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = if (isSelected) Crimson else Color.DarkGray
@@ -194,12 +218,18 @@ private fun PatientAvatar(
 private fun CalendarGrid(
     month: YearMonth,
     selectedDate: LocalDate?,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
+    availableDays: List<String> = emptyList()
 ) {
+
+    // Mapeo de nombre inglés a DayOfWeek
+    val enabledDays = availableDays.mapNotNull {
+        runCatching { DayOfWeek.valueOf(it.uppercase()) }.getOrNull()
+    }
+
     val today = LocalDate.now()
     val firstDay = month.atDay(1)
     val daysInMonth = month.lengthOfMonth()
-    // Lunes = 1, Domingo = 7 → desplazamiento para que la primera fila empiece en Lunes
     val offset = (firstDay.dayOfWeek.value - 1)
 
     Card(
@@ -242,7 +272,8 @@ private fun CalendarGrid(
                                 val isPast = date.isBefore(today)
                                 val isWeekend = col >= 5
                                 val isSelected = selectedDate == date
-                                val isClickable = !isPast && !isWeekend
+                                val isClickable = !isPast && !isWeekend &&
+                                        (enabledDays.isEmpty() || date.dayOfWeek in enabledDays)
 
                                 DayCell(
                                     day = dayNumber,
@@ -258,6 +289,7 @@ private fun CalendarGrid(
             }
         }
     }
+
 }
 
 @Composable

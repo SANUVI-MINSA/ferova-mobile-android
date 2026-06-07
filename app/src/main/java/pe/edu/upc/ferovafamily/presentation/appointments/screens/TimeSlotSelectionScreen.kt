@@ -1,10 +1,12 @@
 package pe.edu.upc.ferovafamily.presentation.appointments.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -37,11 +39,60 @@ fun TimeSlotSelectionScreen(
     onConfirm: (appointmentId: String) -> Unit,
     viewModel: AppointmentsViewModel = viewModel()
 ) {
+
+    val state by viewModel.state.collectAsState()
+    val patient = remember(state.patients) {
+        state.patients.find { it["id"] == patientId }
+    }
     val date = remember(dateIso) { LocalDate.parse(dateIso) }
-    val slots = remember { viewModel.getTimeSlotsFor(centerId, date) }
     var selectedSlot by remember { mutableStateOf<TimeSlot?>(null) }
 
-    val patientName = if (patientId == "child-1") "Mateo" else "Lucia"
+    Log.d("TimeSlot", "Patient id: $patientId, info: $patient")
+
+    LaunchedEffect(Unit) {
+        viewModel.loadAvailableSlots(centerId, date)
+        viewModel.getPatients()
+        viewModel.getCenterById(centerId)
+    }
+
+    LaunchedEffect(state.bookingSuccess) {
+        state.bookingSuccess?.let { confirmedId ->
+            onConfirm(confirmedId) // navega cuando el state se actualice
+        }
+    }
+
+    state.error?.let { errorMessage ->
+        AlertDialog(
+            onDismissRequest = { },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    "No se pudo reservar",
+                    fontWeight = FontWeight.Bold,
+                    color = Crimson
+                )
+            },
+            text = {
+                Text(
+                    text = errorMessage,
+                    color = Color.DarkGray,
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearError()
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Crimson),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Volver al inicio", color = Color.White)
+                }
+            }
+        )
+    }
 
     Scaffold(
         containerColor = Cream,
@@ -68,14 +119,14 @@ fun TimeSlotSelectionScreen(
                 Button(
                     onClick = {
                         selectedSlot?.let { slot ->
-                            val id = viewModel.bookAppointment(
+                            viewModel.bookAppointment(
                                 centerId = centerId,
+                                centerName = state.selectedCenter?.name ?: "",
                                 patientId = patientId,
-                                patientName = patientName,
+                                patientName = patient?.get("name") ?: "",
                                 date = date,
                                 time = slot.time
                             )
-                            if (id.isNotEmpty()) onConfirm(id)
                         }
                     },
                     enabled = selectedSlot != null,
@@ -98,11 +149,25 @@ fun TimeSlotSelectionScreen(
             }
         }
     ) { padding ->
+
+        if (state.isLoadingPatients || state.isLoadingSlots || state.isLoadingCenter) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Crimson)
+            }
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             // Card de fecha seleccionada
             Card(
@@ -168,7 +233,7 @@ fun TimeSlotSelectionScreen(
             Spacer(Modifier.height(12.dp))
 
             // Grid de slots: 2 columnas
-            val rows = slots.chunked(2)
+            val rows = state.availableSlots.chunked(2)
             rows.forEach { rowSlots ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),

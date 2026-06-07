@@ -12,9 +12,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -33,7 +35,9 @@ import pe.edu.upc.ferovafamily.presentation.progress.screens.MedalUnlockedScreen
 import pe.edu.upc.ferovafamily.presentation.progress.screens.ProgressScreen
 import pe.edu.upc.ferovafamily.presentation.progress.screens.StreakLostScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsRoutes
+import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsViewModel
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentConfirmedScreen
+import pe.edu.upc.ferovafamily.presentation.appointments.screens.AppointmentsScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCenterDetailScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.HealthCentersMapScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.screens.TimeSlotSelectionScreen
@@ -56,6 +60,8 @@ fun MainScreen(
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    val appointmentsViewModel: AppointmentsViewModel = viewModel()
 
     // El bottom bar sólo se muestra en las pantallas raíz de cada tab
     val showBottomBar = currentRoute in BottomNavItem.items.map { it.route }
@@ -120,7 +126,7 @@ fun MainScreen(
                         navController.navigate(MainRoutes.NOTIFICATIONS)
                     },
                     onNavigateToHealthCenters = {
-                        navController.navigate(MainRoutes.APPOINTMENTS)
+                        navController.navigate(AppointmentsRoutes.HEALTH_CENTERS_MAP)
                     },
                     onLogout = onLogout
                 )
@@ -128,7 +134,7 @@ fun MainScreen(
 
             // Tab: Diario (placeholder)
             composable(MainRoutes.DIARY) {
-                NutritionalDiaryScreen (
+                NutritionalDiaryScreen(
                     onNewFoodEntry = {
                         navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
@@ -140,11 +146,11 @@ fun MainScreen(
 
             // Tab: Citas — mapa de postas + flujo de agendar cita
             composable(MainRoutes.APPOINTMENTS) {
-                HealthCentersMapScreen(
-                    onBack = null,
-                    onCenterClick = { centerId ->
-                        navController.navigate(AppointmentsRoutes.healthCenterDetail(centerId))
-                    }
+                AppointmentsScreen(
+                    onScheduleAppointment = {
+                        navController.navigate(AppointmentsRoutes.HEALTH_CENTERS_MAP)
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
 
@@ -214,10 +220,10 @@ fun MainScreen(
 
             // ──────────── SUBPANTALLA: CREACION DE PACIENTE ────────────
 
-            composable (route= PatientManagementRoutes.CREATE_PATIENT) {
+            composable(route = PatientManagementRoutes.CREATE_PATIENT) {
                 CreatePatientScreen(
                     onBack = { navController.popBackStack() },
-                    onRegisterChild = {navController.popBackStack()}
+                    onRegisterChild = { navController.popBackStack() }
                 )
             }
 
@@ -292,15 +298,17 @@ fun MainScreen(
 
             composable(NutritionalDiaryRoutes.NEW_MEAL) {
                 NewNutritionalMealScreen(
-                    onBack = {navController.popBackStack()},
-                    onRegisterMeal = {navController.popBackStack()}
+                    onBack = { navController.popBackStack() },
+                    onRegisterMeal = { navController.popBackStack() }
                 )
             }
 
-            composable("diary_history/{patientName}",
-                arguments = listOf(navArgument("patientName") {type = NavType.StringType}))
+            composable(
+                "diary_history/{patientName}",
+                arguments = listOf(navArgument("patientName") { type = NavType.StringType })
+            )
             { backStackEntry ->
-                val patientName = backStackEntry.arguments?.getString("patientName")?: ""
+                val patientName = backStackEntry.arguments?.getString("patientName") ?: ""
                 NutritionalHistoryScreen(
                     selectedPatient = patientName,
                     onBack = {
@@ -310,12 +318,14 @@ fun MainScreen(
 
             // ──────────── SUBPANTALLAS: CITAS Y POSTAS ────────────
 
-            composable(AppointmentsRoutes.HEALTH_CENTERS_MAP) {
+            composable(
+                route = AppointmentsRoutes.HEALTH_CENTERS_MAP
+            ) {
                 HealthCentersMapScreen(
-                    onBack = { navController.popBackStack() },
                     onCenterClick = { centerId ->
                         navController.navigate(AppointmentsRoutes.healthCenterDetail(centerId))
-                    }
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
 
@@ -323,13 +333,14 @@ fun MainScreen(
                 route = AppointmentsRoutes.HEALTH_CENTER_DETAIL,
                 arguments = listOf(navArgument("centerId") { type = NavType.StringType })
             ) { backStack ->
-                val centerId = backStack.arguments?.getString("centerId") ?: return@composable
+                val centerId = backStack.arguments?.getString("centerId")!!
                 HealthCenterDetailScreen(
                     centerId = centerId,
                     onBack = { navController.popBackStack() },
                     onBookAppointment = { id ->
                         navController.navigate(AppointmentsRoutes.appointmentBooking(id))
-                    }
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
 
@@ -337,15 +348,17 @@ fun MainScreen(
                 route = AppointmentsRoutes.APPOINTMENT_BOOKING,
                 arguments = listOf(navArgument("centerId") { type = NavType.StringType })
             ) { backStack ->
-                val centerId = backStack.arguments?.getString("centerId") ?: return@composable
+                val centerId = backStack.arguments?.getString("centerId")!!
                 AppointmentBookingScreen(
                     centerId = centerId,
                     onBack = { navController.popBackStack() },
                     onContinue = { patientId, dateIso ->
+                        appointmentsViewModel.resetBookingState()
                         navController.navigate(
                             AppointmentsRoutes.timeSlotSelection(centerId, patientId, dateIso)
                         )
-                    }
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
 
@@ -360,11 +373,13 @@ fun MainScreen(
                 val centerId = backStack.arguments?.getString("centerId") ?: return@composable
                 val patientId = backStack.arguments?.getString("patientId") ?: return@composable
                 val dateIso = backStack.arguments?.getString("dateIso") ?: return@composable
+
                 TimeSlotSelectionScreen(
                     centerId = centerId,
                     patientId = patientId,
                     dateIso = dateIso,
                     onBack = { navController.popBackStack() },
+                    viewModel = appointmentsViewModel,
                     onConfirm = { appointmentId ->
                         navController.navigate(AppointmentsRoutes.appointmentConfirmed(appointmentId)) {
                             popUpTo(MainRoutes.APPOINTMENTS)
@@ -375,16 +390,14 @@ fun MainScreen(
 
             composable(
                 route = AppointmentsRoutes.APPOINTMENT_CONFIRMED,
-                arguments = listOf(navArgument("appointmentId") { type = NavType.StringType })
-            ) { backStack ->
-                val appointmentId = backStack.arguments?.getString("appointmentId") ?: return@composable
+            ) {
                 AppointmentConfirmedScreen(
-                    appointmentId = appointmentId,
                     onBackToHome = {
                         navController.navigate(MainRoutes.HOME) {
                             popUpTo(MainRoutes.HOME) { inclusive = true }
                         }
-                    }
+                    },
+                    viewModel = appointmentsViewModel
                 )
             }
         }

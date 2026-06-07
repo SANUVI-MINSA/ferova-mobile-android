@@ -55,3 +55,8 @@ data class MyPatientsResponseDto(
     @SerializedName("motherId") val motherId: String?,
     @SerializedName("patients") val patients: List<PatientResponse>?
 )
+
+data class MyPatientsResponse(
+    @SerializedName("motherId") val motherId: String,
+    @SerializedName("patients") val patients: List<Map<String, String>>
+)
