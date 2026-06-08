@@ -68,10 +68,8 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
 
     private fun buildMedals(currentStreak: Int, bestStreak: Int): List<Medal> = listOf(
         Medal("first-week",        MedalType.FIRST_WEEK,          "First Week",         "Completa los 7 días sin fallar",           bestStreak >= 7,  minOf(bestStreak, 7),  7,  "¡7 días completados!"),
-        Medal("first-month",       MedalType.FIRST_MONTH,         "First Month",        "Completa los 30 días sin fallar",          bestStreak >= 30, minOf(bestStreak, 30), 30, "¡30 días completados!"),
         Medal("half-treatment",    MedalType.HALF_TREATMENT,      "Half Treatment",     "Completa la mitad del tratamiento (45 d)", bestStreak >= 45, minOf(bestStreak, 45), 45, "¡Mitad del camino!"),
         Medal("treatment-completed",MedalType.TREATMENT_COMPLETED,"Treatment Completed","Completa el tratamiento (90 días)",        bestStreak >= 90, minOf(bestStreak, 90), 90, "¡Tratamiento completo!"),
-        Medal("streak-recovered",  MedalType.STREAK_RECOVERED,    "Streak Recovered",   "Recupera tu racha perdida (7 días)",       currentStreak >= 7 && bestStreak > currentStreak, minOf(currentStreak, 7), 7, "¡Racha recuperada!")
     )
 
     private fun loadMockData() {
