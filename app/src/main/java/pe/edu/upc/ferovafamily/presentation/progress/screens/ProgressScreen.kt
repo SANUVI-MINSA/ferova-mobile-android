@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MilitaryTech
@@ -122,14 +121,6 @@ fun ProgressScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // ─── Sección de demo (vista previa de pantallas) ───
-            DemoSection(
-                onDoseConfirmed = onPreviewDoseConfirmed,
-                onMedalUnlocked = {
-                    state.medals.firstOrNull()?.id?.let { onPreviewMedalUnlocked(it) }
-                },
-                onStreakLost = onPreviewStreakLost
-            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -241,46 +232,6 @@ private fun HemoglobinSection(currentValue: Float, points: List<pe.edu.upc.ferov
             )
             Spacer(Modifier.height(8.dp))
             HemoglobinChart(points = points)
-        }
-    }
-}
-
-@Composable
-private fun DemoSection(
-    onDoseConfirmed: () -> Unit,
-    onMedalUnlocked: () -> Unit,
-    onStreakLost: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = SoftPink),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                "Vista previa de pantallas",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Crimson
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onDoseConfirmed,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Ver: ¡Dosis Confirmada!") }
-            Spacer(Modifier.height(6.dp))
-            OutlinedButton(
-                onClick = onMedalUnlocked,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Ver: Medalla Desbloqueada") }
-            Spacer(Modifier.height(6.dp))
-            OutlinedButton(
-                onClick = onStreakLost,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Ver: Perdiste tu racha") }
         }
     }
 }
