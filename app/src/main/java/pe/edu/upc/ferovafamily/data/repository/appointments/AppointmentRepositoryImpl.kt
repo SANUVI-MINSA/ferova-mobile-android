@@ -22,11 +22,27 @@ class AppointmentRepositoryImpl(
         lat: Double,
         lng: Double
     ): List<HealthCenter> {
-        val response = healthFacilitiesService.getNearbyFacilities(lat, lng)
-        if (!response.isSuccessful) return emptyList()
+        // Agrega estos logs
+        android.util.Log.d("POSTAS", "📍 loadNearbyFacilities called: lat=$lat, lng=$lng")
 
-        return response.body()?.filter { dto ->
-            (dto.distanceKm ?: Double.MAX_VALUE) <= 10.0
+        val response = healthFacilitiesService.getNearbyFacilities(lat, lng)
+
+        android.util.Log.d("POSTAS", "📍 Response code: ${response.code()}")
+
+        if (!response.isSuccessful) {
+            android.util.Log.e("POSTAS", "📍 Error: ${response.errorBody()?.string()}")
+            return emptyList()
+        }
+
+        val body = response.body()
+        android.util.Log.d("POSTAS", "📍 Body size: ${body?.size ?: 0}")
+
+        body?.forEachIndexed { index, dto ->
+            android.util.Log.d("POSTAS", "📍 [$index] ${dto.name} - ${dto.distanceKm} km - lat:${dto.latitude}, lng:${dto.longitude}")
+        }
+
+        return body?.filter { dto ->
+            (dto.distanceKm ?: Double.MAX_VALUE) <= 100.0 // Distancia maxima (km) para la cercania (CAMBIAR SI QUIERN QUE LAS POSTAS ESTEN MAS CERCA)
         }?.sortedBy { it.distanceKm }?.map { dto ->
             HealthCenter(
                 id = dto.id,

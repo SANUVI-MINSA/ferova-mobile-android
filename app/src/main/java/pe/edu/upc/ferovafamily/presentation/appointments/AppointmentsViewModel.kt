@@ -91,7 +91,13 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     //Obtiene la ubicacion del usuario
     @SuppressLint("MissingPermission")
     private fun getLocation() {
-        if (!hasLocationPermission()) return
+
+        android.util.Log.d("POSTAS", "📍 hasLocationPermission: ${hasLocationPermission()}")
+
+        if (!hasLocationPermission()) {
+            android.util.Log.d("POSTAS", "📍 No tiene permiso de ubicación")
+            return
+        }
 
         _state.update { it.copy(isLoadingLocation = true) }
         val fusedClient = LocationServices.getFusedLocationProviderClient(getApplication())
