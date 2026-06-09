@@ -190,7 +190,7 @@ fun HealthCentersMapScreen(
         TopAppBar(
             title = {
                 Text(
-                    "Postas encontradas\n ${state.userLocation.first} - ${state.userLocation.second}\n${state.healthCenters.size}",
+                    "Postas encontradas",
                     fontWeight = FontWeight.Bold
                 )
             },
