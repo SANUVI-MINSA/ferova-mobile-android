@@ -231,7 +231,16 @@ private fun HemoglobinSection(currentValue: Float, points: List<pe.edu.upc.ferov
                 color = Color.Gray
             )
             Spacer(Modifier.height(8.dp))
-            HemoglobinChart(points = points)
+            if (points.isEmpty()) {
+                Text(
+                    text = "No hay registros de hemoglobina aún.\nLa enfermera los agregará durante el seguimiento.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                HemoglobinChart(points = points)
+            }
         }
     }
 }
