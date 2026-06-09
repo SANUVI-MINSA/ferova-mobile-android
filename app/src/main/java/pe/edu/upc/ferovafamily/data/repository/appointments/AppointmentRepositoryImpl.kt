@@ -42,7 +42,7 @@ class AppointmentRepositoryImpl(
         }
 
         return body?.filter { dto ->
-            (dto.distanceKm ?: Double.MAX_VALUE) <= 100.0
+            (dto.distanceKm ?: Double.MAX_VALUE) <= 100.0 // Distancia maxima para la cercania (CAMBIAR SI QUIERN QUE LAS POSTAS ESTEN MAS CERCA)
         }?.sortedBy { it.distanceKm }?.map { dto ->
             HealthCenter(
                 id = dto.id,
