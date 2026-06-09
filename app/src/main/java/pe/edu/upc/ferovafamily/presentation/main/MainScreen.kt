@@ -43,7 +43,6 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryRo
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NewNutritionalMealScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalDiaryScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalHistoryScreen
-import pe.edu.upc.ferovafamily.presentation.notifications.NotificationsScreen
 import pe.edu.upc.ferovafamily.presentation.patient_management.PatientManagementRoutes
 import pe.edu.upc.ferovafamily.presentation.patient_management.screens.CreatePatientScreen
 
@@ -202,14 +201,6 @@ fun MainScreen(
                     ?: return@composable
                 ChatScreen(
                     consultationId = consultationId,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-
-            // ──────────── NOTIFICACIONES ────────────
-
-            composable(MainRoutes.NOTIFICATIONS) {
-                NotificationsScreen(
                     onBack = { navController.popBackStack() }
                 )
             }
