@@ -55,3 +55,14 @@ data class MyPatientsResponseDto(
     @SerializedName("motherId") val motherId: String?,
     @SerializedName("patients") val patients: List<PatientResponse>?
 )
+
+// Respuesta del backend para GET /patients/{patientId}/hemoglobin-evolution
+data class HemoglobinEvolutionResponse(
+    @SerializedName("currentHemoglobin") val currentHemoglobin: Double?,
+    @SerializedName("chart") val chart: List<HemoglobinChartPoint>?
+)
+
+data class HemoglobinChartPoint(
+    @SerializedName("date") val date: String?,
+    @SerializedName("hemoglobinLevel") val hemoglobinLevel: Double?
+)
