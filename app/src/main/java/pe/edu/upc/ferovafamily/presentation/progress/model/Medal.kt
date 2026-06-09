@@ -29,11 +29,8 @@ enum class MedalType(
     val icon: ImageVector
 ) {
     FIRST_WEEK("First Week", "FIRST WEEK", Icons.Default.WorkspacePremium),
-    FIRST_MONTH("First Month", "FIRST MONTH", Icons.Default.Favorite),
     HALF_TREATMENT("Half Treatment", "HALF TREATMENT", Icons.Default.Star),
-    TREATMENT_COMPLETED("Treatment Completed", "TREATMENT COMPLETED", Icons.Default.MilitaryTech),
-    STREAK_RECOVERED("Streak Recovered", "STREAK RECOVERED", Icons.Default.Bolt);
-
+    TREATMENT_COMPLETED("Treatment Completed", "TREATMENT COMPLETED", Icons.Default.MilitaryTech);
     companion object {
         val defaultIcon: ImageVector = Icons.Default.EmojiEvents
     }
