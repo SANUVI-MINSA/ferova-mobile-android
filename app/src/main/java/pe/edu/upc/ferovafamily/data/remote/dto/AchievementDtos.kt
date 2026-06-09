@@ -37,3 +37,13 @@ data class BadgeDto(
     @SerializedName("unlockedAt")      val unlockedAt: String?,
     @SerializedName("category")        val category: String?
 )
+
+data class AchievementResponse(
+    @SerializedName("patientId") val patientId: String,
+    @SerializedName("patientName") val patientName: String,
+    @SerializedName("status") val status: String,
+    @SerializedName("totalPoints") val totalPoints: Int,
+    @SerializedName("currentStreak") val currentStreak: Int,
+    @SerializedName("longestStreak") val longestStreak: Int,
+    @SerializedName("message") val message: String?
+)
