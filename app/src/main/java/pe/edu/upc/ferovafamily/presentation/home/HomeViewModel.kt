@@ -69,6 +69,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(isSelected = it.id == childId)
             })
         }
+        tokenManager.selectedChildId = childId
     }
 
     val selectedChildId: String?
