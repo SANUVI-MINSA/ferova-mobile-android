@@ -28,14 +28,15 @@ data class BadgesResponseDto(
 )
 
 data class BadgeDto(
-    @SerializedName("id")              val id: String?,
-    @SerializedName("name")            val name: String?,
-    @SerializedName("description")     val description: String?,
-    @SerializedName("isUnlocked")      val isUnlocked: Boolean?,
-    @SerializedName("currentProgress") val currentProgress: Int?,
-    @SerializedName("targetProgress")  val targetProgress: Int?,
-    @SerializedName("unlockedAt")      val unlockedAt: String?,
-    @SerializedName("category")        val category: String?
+    @SerializedName("id") val id: String?,
+    @SerializedName("type") val type: String?,           // ← backend usa "type", no "category"
+    @SerializedName("name") val name: String?,
+    @SerializedName("description") val description: String?,
+    @SerializedName("milestone") val milestone: Int?,    // ← targetProgress
+    @SerializedName("isUnlocked") val isUnlocked: Boolean?,
+    @SerializedName("unlockedAt") val unlockedAt: String?,
+    @SerializedName("progress") val progress: Int?,      // ← currentProgress
+    @SerializedName("daysNeeded") val daysNeeded: Int?   // ← target alternativo
 )
 
 data class AchievementResponse(
