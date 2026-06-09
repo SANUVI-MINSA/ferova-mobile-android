@@ -13,11 +13,18 @@ class AchievementRepositoryImpl(
     override suspend fun getAchievementProgress(patientId: String): AchievementProgress {
         return try {
             val response = service.getAchievementProgress(patientId)
-            if (response.isSuccessful) response.body()?.toDomain() ?: mockProgress()
-            else mockProgress()
+            if (response.isSuccessful) {
+                response.body()?.let { dto ->
+                    AchievementProgress(
+                        points = dto.totalPoints ?: 0,
+                        currentStreak = dto.currentStreak ?: 0,
+                        bestStreak = dto.longestStreak ?: 0,
+                        healthStatus = dto.status ?: "",
+                    )
+                } ?: mockProgress()
+            } else mockProgress()
         } catch (_: Exception) { mockProgress() }
     }
-
     override suspend fun getBadges(patientId: String): List<Badge> {
         return try {
             val response = service.getBadges(patientId)
