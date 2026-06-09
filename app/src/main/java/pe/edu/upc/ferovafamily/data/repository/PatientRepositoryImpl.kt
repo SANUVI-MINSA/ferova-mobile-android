@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.data.repository
 
+import android.util.Log
 import pe.edu.upc.ferovafamily.data.mapper.toDomain
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
 import pe.edu.upc.ferovafamily.data.remote.dto.CreateMedicalRecordRequest
@@ -9,6 +10,9 @@ import pe.edu.upc.ferovafamily.domain.model.HemoglobinRecord
 import pe.edu.upc.ferovafamily.domain.model.MedicalRecord
 import pe.edu.upc.ferovafamily.domain.model.Patient
 import pe.edu.upc.ferovafamily.domain.repository.PatientRepository
+
+private const val TAG = "PatientRepo"
+
 class PatientRepositoryImpl(
     private val service: PatientApiService
 ) : PatientRepository {
@@ -41,18 +45,35 @@ class PatientRepositoryImpl(
     }
 
     override suspend fun getHemoglobinEvolution(patientId: String): List<HemoglobinRecord> {
+        Log.d(TAG, "getHemoglobinEvolution called with patientId: $patientId")
         return try {
             val response = service.getHemoglobinEvolution(patientId)
+            Log.d(TAG, "Hemoglobin response code: ${response.code()}")
+
             if (response.isSuccessful) {
                 val body = response.body()
+                Log.d(TAG, "Hemoglobin response body: $body")
+
+                val chart = body?.chart
+                Log.d(TAG, "Chart size: ${chart?.size ?: 0}")
+
+                chart?.forEach { point ->
+                    Log.d(TAG, "Chart point: date=${point.date}, hemoglobinLevel=${point.hemoglobinLevel}")
+                }
+
                 body?.chart?.map { point ->
                     HemoglobinRecord(
-                        date = formatDate(point.date),  // ← Formatear fecha a "dd MMMM"
+                        date = formatDate(point.date),
                         value = point.hemoglobinLevel?.toFloat() ?: 0f
                     )
-                } ?: mockHemoglobin()
-            } else mockHemoglobin()
-        } catch (_: Exception) { mockHemoglobin() }
+                } ?: emptyList()
+            } else {
+                Log.e(TAG, "Hemoglobin response not successful: ${response.code()}")
+                emptyList()            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception in getHemoglobinEvolution", e)
+            emptyList()
+        }
     }
 
     private fun formatDate(isoDate: String?): String {
@@ -89,10 +110,4 @@ class PatientRepositoryImpl(
         } else throw Exception("registerHemoglobinControl HTTP ${response.code()}")
     }
 
-    private fun mockHemoglobin() = listOf(
-        HemoglobinRecord("12 Abril",  7.0f),
-        HemoglobinRecord("14 Mayo",   8.0f),
-        HemoglobinRecord("12 Junio",  9.0f),
-        HemoglobinRecord("28 Julio", 11.2f)
-    )
 }
