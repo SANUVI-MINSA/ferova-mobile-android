@@ -72,6 +72,4 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         tokenManager.selectedChildId = childId
     }
 
-    val selectedChildId: String?
-        get() = _uiState.value.children.firstOrNull { it.isSelected }?.id
 }
