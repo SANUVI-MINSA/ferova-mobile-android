@@ -9,7 +9,6 @@ import pe.edu.upc.ferovafamily.domain.model.HemoglobinRecord
 import pe.edu.upc.ferovafamily.domain.model.MedicalRecord
 import pe.edu.upc.ferovafamily.domain.model.Patient
 import pe.edu.upc.ferovafamily.domain.repository.PatientRepository
-
 class PatientRepositoryImpl(
     private val service: PatientApiService
 ) : PatientRepository {
@@ -45,9 +44,26 @@ class PatientRepositoryImpl(
         return try {
             val response = service.getHemoglobinEvolution(patientId)
             if (response.isSuccessful) {
-                response.body()?.map { it.toDomain() } ?: mockHemoglobin()
+                val body = response.body()
+                body?.chart?.map { point ->
+                    HemoglobinRecord(
+                        date = formatDate(point.date),  // ← Formatear fecha a "dd MMMM"
+                        value = point.hemoglobinLevel?.toFloat() ?: 0f
+                    )
+                } ?: mockHemoglobin()
             } else mockHemoglobin()
         } catch (_: Exception) { mockHemoglobin() }
+    }
+
+    private fun formatDate(isoDate: String?): String {
+        if (isoDate.isNullOrEmpty()) return ""
+        return try {
+            val parsed = java.time.LocalDate.parse(isoDate.substring(0, 10))
+            "${parsed.dayOfMonth} ${parsed.month.getDisplayName(
+                java.time.format.TextStyle.SHORT,
+                java.util.Locale("es")
+            )}"
+        } catch (_: Exception) { isoDate }
     }
 
     /** NURSE only — 403 para rol Mother */
