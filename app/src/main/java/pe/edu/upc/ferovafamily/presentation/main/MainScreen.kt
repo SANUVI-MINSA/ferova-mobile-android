@@ -30,8 +30,6 @@ import pe.edu.upc.ferovafamily.presentation.consultations.screens.MyConsultation
 import pe.edu.upc.ferovafamily.presentation.consultations.screens.NewConsultationScreen
 import pe.edu.upc.ferovafamily.presentation.home.HomeScreen
 import pe.edu.upc.ferovafamily.presentation.progress.ProgressRoutes
-import pe.edu.upc.ferovafamily.presentation.progress.screens.DoseConfirmedScreen
-import pe.edu.upc.ferovafamily.presentation.progress.screens.MedalUnlockedScreen
 import pe.edu.upc.ferovafamily.presentation.progress.screens.ProgressScreen
 import pe.edu.upc.ferovafamily.presentation.progress.screens.StreakLostScreen
 import pe.edu.upc.ferovafamily.presentation.appointments.AppointmentsRoutes
@@ -249,40 +247,6 @@ fun MainScreen(
                 )
             }
 
-            composable(ProgressRoutes.DOSE_CONFIRMED) {
-                DoseConfirmedScreen(
-                    onContinueToHome = {
-                        navController.navigate(MainRoutes.HOME) {
-                            popUpTo(MainRoutes.HOME) { inclusive = true }
-                        }
-                    },
-                    onSeeProgress = {
-                        navController.navigate(ProgressRoutes.PROGRESS) {
-                            popUpTo(ProgressRoutes.PROGRESS) { inclusive = true }
-                        }
-                    }
-                )
-            }
-
-            composable(
-                route = ProgressRoutes.MEDAL_UNLOCKED,
-                arguments = listOf(navArgument("medalId") { type = NavType.StringType })
-            ) { backStack ->
-                val medalId = backStack.arguments?.getString("medalId") ?: return@composable
-                MedalUnlockedScreen(
-                    medalId = medalId,
-                    onBackToHome = {
-                        navController.navigate(MainRoutes.HOME) {
-                            popUpTo(MainRoutes.HOME) { inclusive = true }
-                        }
-                    },
-                    onSeeMedals = {
-                        navController.navigate(ProgressRoutes.PROGRESS) {
-                            popUpTo(ProgressRoutes.PROGRESS) { inclusive = true }
-                        }
-                    }
-                )
-            }
 
             composable(ProgressRoutes.STREAK_LOST) {
                 StreakLostScreen(
