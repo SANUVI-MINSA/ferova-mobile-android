@@ -120,9 +120,7 @@ fun MainScreen(
                         navController.navigate(PatientManagementRoutes.CREATE_PATIENT)
                     },
                     onNavigateToHistory = onNavigateToHistory,
-                    onNavigateToNotifications = {
-                        navController.navigate(MainRoutes.NOTIFICATIONS)
-                    },
+
                     onNavigateToHealthCenters = {
                         navController.navigate(AppointmentsRoutes.HEALTH_CENTERS_MAP)
                     },

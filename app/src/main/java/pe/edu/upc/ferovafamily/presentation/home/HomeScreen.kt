@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.*
@@ -45,7 +44,6 @@ fun HomeScreen(
     onNavigateToNewMeal: () -> Unit = {},
     onNavigateToCreatePatient: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
-    onNavigateToNotifications: () -> Unit = {},
     onNavigateToHealthCenters: () -> Unit = {},
     onLogout: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
@@ -78,15 +76,7 @@ fun HomeScreen(
                         )
                     }
                 },
-                actions = {
-                    IconButton(onClick = onNavigateToNotifications) {
-                        Icon(
-                            Icons.Default.Notifications,
-                            contentDescription = "Notificaciones",
-                            tint = Color.White
-                        )
-                    }
-                },
+
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Crimson)
             )
         }
