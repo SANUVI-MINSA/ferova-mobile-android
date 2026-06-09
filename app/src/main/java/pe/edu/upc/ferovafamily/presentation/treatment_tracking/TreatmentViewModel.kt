@@ -1,6 +1,7 @@
 package pe.edu.upc.ferovafamily.presentation.treatment_tracking
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,15 +14,19 @@ import pe.edu.upc.ferovafamily.data.remote.FerovaApiClient
 import pe.edu.upc.ferovafamily.data.remote.api.TreatmentApiService
 import pe.edu.upc.ferovafamily.data.repository.TreatmentRepositoryImpl
 import pe.edu.upc.ferovafamily.domain.model.DoseRecord
-import pe.edu.upc.ferovafamily.domain.model.TodayDose
 import pe.edu.upc.ferovafamily.domain.repository.TreatmentRepository
+import java.time.LocalDateTime
+import java.util.Locale
+
+private const val TAG = "TreatmentViewModel"
 
 data class TreatmentUiState(
-    val todayDose: TodayDose? = null,
+    val patientName: String = "",
+    val supplementName: String = "",
+    val quantity: String = "",
+    val dosingHours: String = "",
     val doseHistory: List<DoseRecord> = emptyList(),
     val isLoading: Boolean = false,
-    val isConfirming: Boolean = false,
-    val doseConfirmed: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -40,55 +45,66 @@ class TreatmentViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun loadData() {
-        val patientId = tokenManager.userId ?: "default"
+        val patientId = tokenManager.selectedChildId ?: tokenManager.userId
+
+        Log.d(TAG, "========== loadData ==========")
+        Log.d(TAG, "selectedChildId: ${tokenManager.selectedChildId}")
+        Log.d(TAG, "userId: ${tokenManager.userId}")
+        Log.d(TAG, "Final patientId: $patientId")
+
+        if (patientId.isNullOrBlank()) {
+            Log.e(TAG, "No patientId found")
+            return
+        }
+
         _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
             try {
-                val todayDose   = repository.getTodayDose(patientId)
-                val doseHistory = repository.getDoseHistory(patientId)
+
+                Log.d(TAG, "Calling repository.getDoseHistory...")
+
+                val history = repository.getDoseHistory(patientId)
+
+                Log.d(TAG, "Repository returned successfully")
+                Log.d(TAG, "Patient: ${history.patientName}")
+                Log.d(TAG, "Doses received: ${history.doses.size}")
+
                 _uiState.update {
                     it.copy(
-                        todayDose   = todayDose,
-                        doseHistory = doseHistory,
-                        isLoading   = false
+                        patientName = history.patientName,
+                        supplementName = history.supplementName,
+                        quantity = history.quantity,
+                        dosingHours = history.dosingHours,
+                        doseHistory = history.doses,
+                        isLoading = false,
+                        errorMessage = null
                     )
                 }
+                Log.d(TAG, "UI State updated successfully")
             } catch (e: Exception) {
+                Log.e(TAG, "Error loading dose history", e)
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = e.message)
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message
+                    )
                 }
             }
         }
     }
 
-    fun confirmDose() {
-        val patientId = tokenManager.userId ?: return
-        _uiState.update { it.copy(isConfirming = true) }
-
-        viewModelScope.launch {
-            try {
-                val record = repository.confirmDose(patientId)
-                _uiState.update { state ->
-                    state.copy(
-                        isConfirming  = false,
-                        doseConfirmed = true,
-                        todayDose     = state.todayDose?.copy(canConfirm = false, confirmedAt = record.confirmedAt),
-                        doseHistory   = listOf(record) + state.doseHistory
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isConfirming = false, errorMessage = e.message)
-                }
-            }
-        }
-    }
-
-    fun clearError()        = _uiState.update { it.copy(errorMessage = null) }
-    fun clearDoseConfirmed()= _uiState.update { it.copy(doseConfirmed = false) }
-
-    /** Agrupa el historial por fecha para mostrar secciones en la UI */
     val doseHistoryGrouped: Map<String, List<DoseRecord>>
-        get() = _uiState.value.doseHistory.groupBy { it.date }
+        get() = _uiState.value.doseHistory.groupBy { formatDate(it.scheduledDate) }
+
+    private fun formatDate(isoDate: String): String {
+        return try {
+            val parsed = LocalDateTime.parse(isoDate)
+            "${parsed.dayOfMonth} ${parsed.month.getDisplayName(java.time.format.TextStyle.SHORT, Locale("es"))}"
+        } catch (e: Exception) {
+            isoDate.substring(0, 10)
+        }
+    }
+
+    fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 }
