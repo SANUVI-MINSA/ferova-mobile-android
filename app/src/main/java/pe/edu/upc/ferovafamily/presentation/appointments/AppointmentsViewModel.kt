@@ -10,22 +10,20 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import pe.edu.upc.ferovafamily.data.remote.FerovaApiClient
 import pe.edu.upc.ferovafamily.data.remote.api.HealthFacilitiesApiService
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
-import pe.edu.upc.ferovafamily.data.remote.dto.BookAppointmentRequest
-import pe.edu.upc.ferovafamily.data.remote.dto.CancelAppointmentRequest
+import pe.edu.upc.ferovafamily.data.repository.appointments.AppointmentRepositoryImpl
 import pe.edu.upc.ferovafamily.domain.model.Patient
 import pe.edu.upc.ferovafamily.domain.model.appointments.Appointment
 import pe.edu.upc.ferovafamily.domain.model.appointments.HealthCenter
 import pe.edu.upc.ferovafamily.domain.model.appointments.TimeSlot
+import pe.edu.upc.ferovafamily.domain.repository.appointments.AppointmentRepository
 import java.time.LocalDate
 
 data class AppointmentsUiState(
@@ -59,11 +57,10 @@ data class AppointmentsUiState(
 
 class AppointmentsViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val healthFacilitiesService =
-        FerovaApiClient.create(HealthFacilitiesApiService::class.java, application)
-
-    private val patientService =
+    private val repository: AppointmentRepository = AppointmentRepositoryImpl(
+        FerovaApiClient.create(HealthFacilitiesApiService::class.java, application),
         FerovaApiClient.create(PatientApiService::class.java, application)
+    )
 
     private val _state = MutableStateFlow(AppointmentsUiState())
     val state: StateFlow<AppointmentsUiState> = _state.asStateFlow()
@@ -142,31 +139,11 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     fun loadNearbyFacilities() {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingCenters = true, error = null) }
-            val lat = _state.value.userLocation.first
-            val lng = _state.value.userLocation.second
             try {
-                val response = healthFacilitiesService.getNearbyFacilities(lat, lng)
-                if (response.isSuccessful) {
-                    val centers = response.body()?.filter { dto ->
-                        (dto.distanceKm ?: Double.MAX_VALUE) <= 10.0
-                    }?.sortedBy { it.distanceKm }?.map { dto ->
-                        HealthCenter(
-                            id = dto.id,
-                            name = dto.name,
-                            address = dto.address ?: "",
-                            phone = dto.phoneNumber ?: "",
-                            location = LatLng(
-                                dto.latitude ?: 0.0,
-                                dto.longitude ?: 0.0
-                            ),
-                            distanceKm = dto.distanceKm ?: 0.0,
-                            isActive = dto.status == "ACTIVE",
-                            attentionDays = dto.availableDays ?: emptyList(),
-                            services = dto.services ?: emptyList()
-                        )
-                    } ?: emptyList()
-                    _state.update { it.copy(healthCenters = centers, isLoadingCenters = false) }
-                }
+                val lat = _state.value.userLocation.first
+                val lng = _state.value.userLocation.second
+                val centers = repository.loadNearbyFacilities(lat, lng)
+                _state.update { it.copy(healthCenters = centers, isLoadingCenters = false) }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -181,44 +158,13 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     // Obtener HealthCenter por Id
     fun getCenterById(id: String) {
         viewModelScope.launch {
+            _state.update { it.copy(isLoadingCenter = true, error = null) }
             try {
-                _state.update {
-                    it.copy(
-                        isLoadingCenter = true,
-                        error = null
-                    )
-                }
-                val response = healthFacilitiesService.getFacilityDetail(id)
-                if (response.isSuccessful) {
-                    response.body()?.let { dto ->
-                        val center = HealthCenter(
-                            id = id,
-                            name = dto.name,
-                            address = dto.address ?: "",
-                            phone = dto.phoneNumber ?: "",
-                            location = LatLng(
-                                dto.latitude ?: 0.0,
-                                dto.longitude ?: 0.0
-                            ),
-                            distanceKm = dto.distanceKm ?: 0.0,
-                            isActive = dto.status == "ACTIVE",
-                            attentionDays = dto.availableDays ?: emptyList(),
-                            services = dto.services ?: emptyList()
-                        )
-                        _state.update {
-                            it.copy(
-                                selectedCenter = center,
-                                isLoadingCenter = false
-                            )
-                        }
-                    }
-                }
+                val center = repository.getCenterById(id)
+                _state.update { it.copy(selectedCenter = center, isLoadingCenter = false) }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(
-                        isLoadingCenter = false,
-                        error = "Failed loading center: $e"
-                    )
+                    it.copy(isLoadingCenter = false, error = "Failed loading center: $e")
                 }
             }
         }
@@ -227,49 +173,13 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     // Obtener pacientes
     fun getPatients() {
         viewModelScope.launch {
+            _state.update { it.copy(isLoadingPatients = true, error = null) }
             try {
-                _state.update {
-                    it.copy(
-                        isLoadingPatients = true,
-                        error = null
-                    )
-                }
-                val response = patientService.getMyPatients()
-                if (response.isSuccessful) {
-                    val dto = response.body()
-                    val patientsDto = dto?.patients ?: emptyList()
-                    val patients = patientsDto.map { patientDto ->
-                        Patient(
-                            id = patientDto.id,
-                            name = patientDto.name,
-                            lastName = "",
-                            birthDate = "",
-                            gender = "",
-                            weight = 0.0,
-                            height = 0.0,
-                            motherId = ""
-                        )
-                    }
-                    _state.update {
-                        it.copy(
-                            patients = patients,
-                            isLoadingPatients = false
-                        )
-                    }
-                } else {
-                    _state.update {
-                        it.copy(
-                            isLoadingPatients = false,
-                            error = "Error al cargar pacientes"
-                        )
-                    }
-                }
+                val patients = repository.getPatients()
+                _state.update { it.copy(patients = patients, isLoadingPatients = false) }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(
-                        isLoadingPatients = false,
-                        error = "Failed loading patients: $e"
-                    )
+                    it.copy(isLoadingPatients = false, error = "Failed loading patients: $e")
                 }
             }
         }
@@ -287,32 +197,11 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 )
             }
             try {
-                val dateStr = date.toString()
-                val response = healthFacilitiesService.getAvailableSlots(centerId, dateStr)
-                if (response.isSuccessful) {
-                    response.body()?.let { slots ->
-                        val slots = slots.map { dto ->
-                            TimeSlot(
-                                time = dto.time,
-                                isAvailable = dto.status == "AVAILABLE"
-                            )
-                        }
-                        _state.update { it.copy(availableSlots = slots, isLoadingSlots = false) }
-                    }
-                } else {
-                    _state.update {
-                        it.copy(
-                            isLoadingSlots = false,
-                            error = response.errorBody()?.string()
-                        )
-                    }
-                }
+                val slots = repository.loadAvailableSlots(centerId, date)
+                _state.update { it.copy(availableSlots = slots, isLoadingSlots = false) }
             } catch (e: Exception) {
                 _state.update {
-                    it.copy(
-                        isLoadingSlots = false,
-                        error = "Failed to load available slots: $e"
-                    )
+                    it.copy(isLoadingSlots = false, error = "Failed to load available slots: $e")
                 }
             }
         }
@@ -345,49 +234,27 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             _state.update { it.copy(isBooking = true, error = null, bookingSuccess = null) }
             try {
-                val request = BookAppointmentRequest(
-                    facilityId = centerId,
-                    patientId = patientId,
-                    appointmentDate = date.toString(),
-                    appointmentTime = time
-                )
-                val response = healthFacilitiesService.bookAppointment(request)
-                if (response.isSuccessful) {
-                    val appointment = Appointment(
-                        id = "",
-                        healthCenterId = centerId,
-                        healthCenterName = centerName,
-                        patientId = patientId,
-                        patientName = patientName,
-                        date = date,
-                        time = time,
+                repository.bookAppointment(centerId, centerName, patientId, patientName, date, time)
+                _state.update {
+                    it.copy(
+                        appointment = Appointment(
+                            id = "",
+                            healthCenterId = centerId,
+                            healthCenterName = centerName,
+                            patientId = patientId,
+                            patientName = patientName,
+                            date = date,
+                            time = time
+                        ),
+                        isBooking = false,
+                        bookingSuccess = "OK"
                     )
-                    _state.update {
-                        it.copy(
-                            appointment = appointment,
-                            isBooking = false,
-                            bookingSuccess = "OK"
-                        )
-                    }
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    val rawError = try {
-                        JSONObject(errorBody ?: "").getString("error")
-                    } catch (_: Exception) {
-                        ""
-                    }
-                    _state.update {
-                        it.copy(
-                            isBooking = false,
-                            error = translateError(rawError)
-                        )
-                    }
                 }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
                         isBooking = false,
-                        error = "Failed to create appointment: $e"
+                        error = translateError(e.message ?: "")
                     )
                 }
             }
@@ -401,47 +268,14 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     // Obtener siguiente cita medica
     fun loadNextAppointment() {
         viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    isLoadingNextAppointment = true,
-                    error = null
-                )
-            }
+            _state.update { it.copy(isLoadingNextAppointment = true, error = null) }
             try {
-                val response = healthFacilitiesService.getMotherNextAppointment()
-                if (response.isSuccessful) {
-                    response.body()?.let { dto ->
-                        if (dto.message != null) {
-                            // No hay cita próxima
-                            _state.update {
-                                it.copy(
-                                    nextAppointment = null,
-                                    isLoadingNextAppointment = false
-                                )
-                            }
-                        } else {
-                            // Hay cita próxima
-                            _state.update {
-                                it.copy(
-                                    nextAppointment = Appointment(
-                                        id = dto.id,
-                                        healthCenterId = "",
-                                        healthCenterName = dto.facilityName ?: "",
-                                        patientId = dto.patientId ?: "",
-                                        patientName = "",
-                                        date = LocalDate.parse(
-                                            dto.appointmentDate ?: LocalDate.now().toString()
-                                        ),
-                                        time = dto.appointmentTime ?: "",
-                                        isConfirmed = dto.status == "CONFIRMED"
-                                    ),
-                                    isLoadingNextAppointment = false
-                                )
-                            }
-                        }
-                    } ?: _state.update { it.copy(isLoadingNextAppointment = false) }
-                } else {
-                    _state.update { it.copy(isLoadingNextAppointment = false) }
+                val nextAppointment = repository.getNextAppointment()
+                _state.update {
+                    it.copy(
+                        nextAppointment = nextAppointment,
+                        isLoadingNextAppointment = false
+                    )
                 }
             } catch (e: Exception) {
                 _state.update {
@@ -457,39 +291,14 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     //Obtener historial de citas
     fun loadAppointmentHistory(patientId: String) {
         viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    isLoadingAppointmentHistory = true,
-                    error = null,
-                )
-            }
+            _state.update { it.copy(isLoadingAppointmentHistory = true, error = null) }
             try {
-                val response = healthFacilitiesService.getPatientAppointments(patientId)
-                if (response.isSuccessful) {
-                    response.body()?.let { appointments ->
-                        val history = appointments.map { dto ->
-                            Appointment(
-                                id = dto.id,
-                                healthCenterId = "",
-                                healthCenterName = dto.facilityName ?: "",
-                                patientId = dto.patientId ?: "",
-                                patientName = "",
-                                date = LocalDate.parse(
-                                    dto.appointmentDate ?: LocalDate.now().toString()
-                                ),
-                                time = dto.appointmentTime ?: "",
-                                isConfirmed = dto.status == "CONFIRMED"
-                            )
-                        }
-                        _state.update {
-                            it.copy(
-                                appointmentHistory = history,
-                                isLoadingAppointmentHistory = false
-                            )
-                        }
-                    } ?: _state.update { it.copy(isLoadingAppointmentHistory = false) }
-                } else {
-                    _state.update { it.copy(isLoadingAppointmentHistory = false) }
+                val history = repository.getAppointmentHistory(patientId)
+                _state.update {
+                    it.copy(
+                        appointmentHistory = history,
+                        isLoadingAppointmentHistory = false
+                    )
                 }
             } catch (e: Exception) {
                 _state.update {
@@ -505,46 +314,21 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     //Cancelar cita
     fun cancelAppointment(appointmentId: String) {
         viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    isCancelingAppointment = true,
-                    error = null
-                )
-            }
+            _state.update { it.copy(isCancelingAppointment = true, error = null) }
             try {
-                val request = CancelAppointmentRequest(appointmentId)
-                val response = healthFacilitiesService.cancelAppointment(request)
-                if (response.isSuccessful) {
-                    response.body()?.let {
-                        val message = it.message!!
-                        _state.update { state ->
-                            state.copy(
-                                isCancelingAppointment = false,
-                                showCancelDialog = false,
-                                cancelMessage = message
-                            )
-                        }
-                    }
-
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    val rawError = try {
-                        JSONObject(errorBody ?: "").getString("error")
-                    } catch (_: Exception) {
-                        ""
-                    }
-                    _state.update {
-                        it.copy(
-                            isBooking = false,
-                            error = translateError(rawError)
-                        )
-                    }
+                val message = repository.cancelAppointment(appointmentId)
+                _state.update {
+                    it.copy(
+                        isCancelingAppointment = false,
+                        showCancelDialog = false,
+                        cancelMessage = message
+                    )
                 }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
                         isCancelingAppointment = false,
-                        error = "Failed to cancel appointment: $e"
+                        error = translateError(e.message ?: "")
                     )
                 }
             }
