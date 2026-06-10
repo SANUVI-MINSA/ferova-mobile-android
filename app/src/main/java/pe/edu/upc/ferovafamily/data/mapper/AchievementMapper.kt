@@ -10,16 +10,26 @@ fun AchievementProgressDto.toDomain(): AchievementProgress = AchievementProgress
     points        = totalPoints   ?: 0,
     currentStreak = currentStreak ?: 0,
     bestStreak    = longestStreak ?: 0,
-    healthStatus  = status        ?: "Activo"
+    healthStatus  = status        ?: ""
 )
 
-fun BadgeDto.toDomain(currentStreak: Int = 0): Badge = Badge(
-    id              = id ?: "",
-    name            = name ?: "",
-    description     = description ?: "",
-    isUnlocked      = isUnlocked ?: false,
-    currentProgress = min(currentStreak, milestone ?: daysNeeded ?: 1),
-    targetProgress  = milestone ?: daysNeeded ?: 1,
-    unlockedAt      = unlockedAt,
-    category        = type ?: ""
-)
+fun BadgeDto.toDomain(currentStreak: Int = 0): Badge {
+    val targetDays = milestone ?: daysNeeded ?: 1
+
+    val completedDays = when {
+        isUnlocked == true -> targetDays
+        progress != null && progress > 0 -> (progress * targetDays / 100).coerceIn(0, targetDays)
+        else -> min(currentStreak, targetDays)
+    }
+
+    return Badge(
+        id              = id ?: "",
+        name            = name ?: "",
+        description     = description ?: "",
+        isUnlocked      = isUnlocked ?: false,
+        currentProgress = completedDays,
+        targetProgress  = targetDays,
+        unlockedAt      = unlockedAt,
+        category        = type ?: ""
+    )
+}
