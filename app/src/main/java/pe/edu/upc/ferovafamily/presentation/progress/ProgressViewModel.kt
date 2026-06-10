@@ -14,6 +14,7 @@ import pe.edu.upc.ferovafamily.data.remote.api.AchievementApiService
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
 import pe.edu.upc.ferovafamily.data.repository.AchievementRepositoryImpl
 import pe.edu.upc.ferovafamily.data.repository.PatientRepositoryImpl
+import pe.edu.upc.ferovafamily.domain.model.Badge
 import pe.edu.upc.ferovafamily.domain.repository.AchievementRepository
 import pe.edu.upc.ferovafamily.domain.repository.PatientRepository
 import pe.edu.upc.ferovafamily.presentation.progress.model.HemoglobinPoint
@@ -93,12 +94,18 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun buildMedalsFromBadges(badges: List<pe.edu.upc.ferovafamily.domain.model.Badge>, currentStreak: Int): List<Medal> {
+    private fun buildMedalsFromBadges(
+        badges: List<Badge>,
+        currentStreak: Int
+    ): List<Medal> {
         if (badges.isEmpty()) {
             return buildDefaultMedals(currentStreak)
         }
 
         return badges.map { badge ->
+            // 🔥 Usar el mayor entre el progress del badge y el currentStreak real
+            val actualProgress = maxOf(badge.currentProgress, currentStreak)
+
             Medal(
                 id = badge.id,
                 type = when (badge.category) {
@@ -109,8 +116,8 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 },
                 title = badge.name,
                 description = badge.description,
-                isUnlocked = badge.isUnlocked,
-                currentDays = badge.currentProgress,
+                isUnlocked = badge.isUnlocked || actualProgress >= badge.targetProgress,  // 🔥 Forzar desbloqueo si cumple
+                currentDays = actualProgress,
                 targetDays = badge.targetProgress,
                 celebrationMessage = "¡${badge.name} desbloqueada!"
             )
