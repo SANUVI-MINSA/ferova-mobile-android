@@ -11,6 +11,10 @@ import kotlinx.coroutines.launch
 import pe.edu.upc.ferovafamily.data.local.TokenManager
 import pe.edu.upc.ferovafamily.data.remote.FerovaApiClient
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
+import pe.edu.upc.ferovafamily.data.remote.api.TreatmentApiService
+import pe.edu.upc.ferovafamily.data.repository.TreatmentRepositoryImpl
+import pe.edu.upc.ferovafamily.domain.model.TodayDose
+import pe.edu.upc.ferovafamily.domain.repository.TreatmentRepository
 
 data class ChildInfo(
     val id: String,
@@ -21,14 +25,22 @@ data class ChildInfo(
 data class HomeUiState(
     val userName: String = "",
     val children: List<ChildInfo> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val todayDose: TodayDose? = null,
+    val isConfirmingDose: Boolean = false,
+    val confirmDoseError: String? = null,
+    val confirmDoseSuccess: Boolean = false
 )
+
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val tokenManager   = TokenManager.getInstance(application)
     private val patientService = FerovaApiClient.create(PatientApiService::class.java, application)
 
+    private val treatmentRepository: TreatmentRepository = TreatmentRepositoryImpl(
+        FerovaApiClient.create(TreatmentApiService::class.java, application)
+    )
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
@@ -54,6 +66,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                     _uiState.update { it.copy(children = children, isLoading = false) }
+                    // Cargar dosis del día para el primer hijo seleccionado
+                    val selectedChildId = tokenManager.selectedChildId ?: children.firstOrNull()?.id
+                    selectedChildId?.let { loadTodayDose(it) }
                 } else {
                     _uiState.update { it.copy(isLoading = false) }
                 }
@@ -70,6 +85,61 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             })
         }
         tokenManager.selectedChildId = childId
+        loadTodayDose(childId)
+    }
+
+    private fun loadTodayDose(patientId: String) {
+        viewModelScope.launch {
+            try {
+                val todayDose = treatmentRepository.getTodayDose(patientId)
+
+                // 🔥 Verificar si el mensaje indica que no hay tratamiento
+                // Esto requiere que el DTO tenga el campo message
+                _uiState.update { it.copy(todayDose = todayDose, confirmDoseError = null) }
+            } catch (e: Exception) {
+                // Si el error es "No active treatment", todayDose = null (tarjeta amarilla)
+                val isNoTreatment = e.message?.contains("Treatment has not started") == true ||
+                        e.message?.contains("No active") == true
+
+                _uiState.update {
+                    it.copy(
+                        todayDose = if (isNoTreatment) null else it.todayDose,
+                        confirmDoseError = if (!isNoTreatment) e.message else null
+                    )
+                }
+            }
+        }
+    }
+
+    fun confirmDose(patientId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isConfirmingDose = true, confirmDoseError = null, confirmDoseSuccess = false) }
+            try {
+                val result = treatmentRepository.confirmDose(patientId)
+                _uiState.update {
+                    it.copy(
+                        isConfirmingDose = false,
+                        confirmDoseSuccess = true
+                    )
+                }
+                // Recargar la dosis del día después de confirmar
+                loadTodayDose(patientId)
+                // Limpiar el mensaje de éxito después de 3 segundos
+                kotlinx.coroutines.delay(3000)
+                _uiState.update { it.copy(confirmDoseSuccess = false) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isConfirmingDose = false,
+                        confirmDoseError = e.message
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearConfirmDoseError() {
+        _uiState.update { it.copy(confirmDoseError = null) }
     }
 
 }
