@@ -8,15 +8,15 @@ import java.util.UUID
 
 fun TodayDoseDto.toDomain(patientId: String): TodayDose = TodayDose(
     patientId = patientId,
-    canConfirm = canConfirm ?: true,
-    scheduledTime = scheduledTime ?: "08:00 AM",
-    confirmedAt = confirmedAt
+    canConfirm = canConfirm ?: false,
+    scheduledTime = dosingHours ?: "",
+    confirmedAt = if (status == "CONFIRMED") "confirmed" else null,
+    dosingHours = dosingHours ?: ""
 )
-
 fun DoseRecordDto.toDomain(): DoseRecord = DoseRecord(
     id = id ?: UUID.randomUUID().toString(),
-    treatmentId = treatmentId ?: "",           // ← NUEVO
-    scheduledDate = scheduledDate ?: "",       // ← CAMBIA: "date" → "scheduledDate"
+    treatmentId = treatmentId ?: "",
+    scheduledDate = scheduledDate ?: "",
     confirmedAt = confirmedAt,
     status = status ?: "PENDING",
     hoursWithoutConfirmation = hoursWithoutConfirmation ?: 0

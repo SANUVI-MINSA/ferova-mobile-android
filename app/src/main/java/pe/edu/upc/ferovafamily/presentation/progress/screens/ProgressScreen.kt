@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.ferovafamily.presentation.progress.ProgressViewModel
 import pe.edu.upc.ferovafamily.presentation.progress.components.HemoglobinChart
 import pe.edu.upc.ferovafamily.presentation.progress.components.MedalListItem
+import pe.edu.upc.ferovafamily.presentation.progress.model.HemoglobinPoint
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -115,14 +116,41 @@ fun ProgressScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            state.medals.forEach { medal ->
-                MedalListItem(medal = medal, modifier = Modifier.padding(vertical = 4.dp))
+            // MOSTRAR MEDALLAS O MENSAJE SI NO HAY
+            if (state.medals.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SoftPink)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Aún no hay medallas disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Espera que el enfermero(a) inicie con un tratamiento",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            } else {
+                state.medals.forEach { medal ->
+                    MedalListItem(medal = medal, modifier = Modifier.padding(vertical = 4.dp))
+                }
             }
 
             Spacer(Modifier.height(20.dp))
-
-
-            Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = onNavigateToHome,
@@ -203,7 +231,7 @@ private fun StreakCard(
 }
 
 @Composable
-private fun HemoglobinSection(currentValue: Float, points: List<pe.edu.upc.ferovafamily.presentation.progress.model.HemoglobinPoint>) {
+private fun HemoglobinSection(currentValue: Float, points: List<HemoglobinPoint>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),

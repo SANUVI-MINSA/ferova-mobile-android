@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.home
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,19 +24,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.domain.model.TodayDose
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
 private val SoftPink = Color(0xFFF9E8E8)
 private val DisabledGray = Color(0xFFB8B8B8)
+private val SuccessGreen = Color(0xFF4CAF50)
+private val CancelRed = Color(0xFFF44336)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,11 +54,34 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     // Recargar datos cada vez que el usuario llega a esta pantalla
-    // (por ejemplo, después de registrar un nuevo hijo)
     LaunchedEffect(Unit) {
         viewModel.loadData()
+    }
+
+    // Mostrar mensaje de error si ocurre
+    LaunchedEffect(uiState.confirmDoseError) {
+        if (uiState.confirmDoseError != null) {
+            Toast.makeText(
+                context,
+                uiState.confirmDoseError,
+                Toast.LENGTH_LONG
+            ).show()
+            viewModel.clearConfirmDoseError()
+        }
+    }
+
+    // Mostrar mensaje de éxito cuando se confirma la dosis
+    LaunchedEffect(uiState.confirmDoseSuccess) {
+        if (uiState.confirmDoseSuccess) {
+            Toast.makeText(
+                context,
+                "¡Dosis confirmada! +10 puntos de adherencia",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     Scaffold(
@@ -76,7 +104,6 @@ fun HomeScreen(
                         )
                     }
                 },
-
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Crimson)
             )
         }
@@ -115,7 +142,17 @@ fun HomeScreen(
             Spacer(Modifier.height(16.dp))
 
             // ── Dosis de hoy ──
-            DoseCard(onViewHistory = onNavigateToHistory)
+            DoseCard(
+                onViewHistory = onNavigateToHistory,
+                todayDose = uiState.todayDose,
+                isConfirmingDose = uiState.isConfirmingDose,
+                onConfirmDose = {
+                    val selectedChild = uiState.children.find { it.isSelected }
+                    selectedChild?.let {
+                        viewModel.confirmDose(it.id)
+                    }
+                }
+            )
 
             Spacer(Modifier.height(16.dp))
 
@@ -124,7 +161,11 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AchievementMiniCard(modifier = Modifier.weight(1f))
+                AchievementMiniCard(
+                    currentStreak = uiState.currentStreak,
+                    totalPoints = uiState.totalPoints,
+                    modifier = Modifier.weight(1f)
+                )
                 NutritionMiniCard(modifier = Modifier.weight(1f))
             }
 
@@ -251,8 +292,10 @@ private fun ChildAvatar(name: String, isSelected: Boolean, onClick: () -> Unit =
 
 @Composable
 private fun AddChildButton(onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier
                 .size(56.dp)
@@ -275,7 +318,23 @@ private fun AddChildButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun DoseCard(onViewHistory: () -> Unit) {
+private fun DoseCard(
+    onViewHistory: () -> Unit,
+    todayDose: TodayDose?,
+    isConfirmingDose: Boolean,
+    onConfirmDose: () -> Unit
+) {
+    val canConfirm = todayDose?.canConfirm == true
+    val scheduledTime = todayDose?.scheduledTime ?: "08:00 AM"
+    val isConfirmed = todayDose?.confirmedAt != null
+    val hasTreatment = todayDose != null
+
+    // Obtener fecha actual formateada
+    val currentDate = java.time.LocalDate.now()
+    val formattedDate = currentDate.format(
+        java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", java.util.Locale("es"))
+    ).replaceFirstChar { it.uppercase() }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Cream),
@@ -283,6 +342,7 @@ private fun DoseCard(onViewHistory: () -> Unit) {
         border = androidx.compose.foundation.BorderStroke(1.dp, SoftPink)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Cabecera
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -323,69 +383,155 @@ private fun DoseCard(onViewHistory: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val days = listOf("L", "M", "M", "J", "V", "S", "D")
-                val completedDays = listOf("L", "M", "M")
+            // Mostrar fecha actual
+            Text(
+                text = formattedDate,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray
+            )
 
-                days.forEach { day ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .background(
-                                    if (day in completedDays) Crimson else DisabledGray,
-                                    CircleShape
-                                )
-                        )
-                        Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(12.dp))
+
+            // Mostrar horario programado (solo si tiene tratamiento)
+            if (hasTreatment) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = day,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
+                            text = "",
+                            fontSize = 18.sp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Horario programado:",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray
                         )
+                    }
+                    Text(
+                        text = scheduledTime,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Crimson
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // Estado de la dosis de hoy
+            when {
+                // Caso 1: Dosis ya confirmada hoy
+                isConfirmed -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SuccessGreen.copy(alpha = 0.1f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "¡Dosis confirmada hoy!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = SuccessGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+                // Caso 2: NO tiene tratamiento activo
+                !hasTreatment -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Visita tu posta para que la enfermera active tu tratamiento",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF856404)
+                            )
+                        }
+                    }
+                }
+                // Caso 3: Tiene tratamiento pero dosis pendiente
+                canConfirm -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Crimson.copy(alpha = 0.1f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Dosis pendiente para hoy",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Crimson,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+                // Caso 4: Tiene tratamiento pero no puede confirmar
+                else -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = CancelRed.copy(alpha = 0.1f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "No hay dosis pendiente para hoy",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = CancelRed
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Aviso: el tratamiento lo activa la enfermera desde su app
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.MedicalServices,
-                        contentDescription = null,
-                        tint = Color(0xFF856404),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "Visita tu posta para que la enfermera active tu tratamiento",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF856404)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
+            // Botón de confirmación
             Button(
-                onClick = { /* Confirmar dosis — requiere tratamiento activo */ },
+                onClick = onConfirmDose,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = false,   // se activa cuando la enfermera inicia el tratamiento
+                enabled = canConfirm && !isConfirmingDose,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Crimson,
                     contentColor = Color.White,
@@ -393,14 +539,21 @@ private fun DoseCard(onViewHistory: () -> Unit) {
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = Color.White
-                )
+                if (isConfirmingDose) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "",
+                        fontSize = 18.sp
+                    )
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Confirmar Dosis",
+                    text = if (isConfirmingDose) "Confirmando..." else "Confirmar Dosis",
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
@@ -408,9 +561,12 @@ private fun DoseCard(onViewHistory: () -> Unit) {
         }
     }
 }
-
 @Composable
-private fun AchievementMiniCard(modifier: Modifier = Modifier) {
+private fun AchievementMiniCard(
+    currentStreak: Int,
+    totalPoints: Int,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier) {
         Text(
             text = "Logro",
@@ -427,15 +583,15 @@ private fun AchievementMiniCard(modifier: Modifier = Modifier) {
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = "Racha Actual: 5 dias",
+                    text = "Racha Actual: $currentStreak ${if (currentStreak == 1) "día" else "días"}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Crimson,
+                    color = if (currentStreak >= 7) SuccessGreen else Crimson,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Puntos: 50",
+                        text = "Puntos: $totalPoints",
                         style = MaterialTheme.typography.bodySmall,
                         color = Crimson,
                         fontWeight = FontWeight.SemiBold
@@ -447,6 +603,33 @@ private fun AchievementMiniCard(modifier: Modifier = Modifier) {
                         tint = Crimson,
                         modifier = Modifier.size(16.dp)
                     )
+                }
+                // Mostrar emoji según racha
+                when {
+                    currentStreak >= 30 -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "🔥 ¡Racha increíble!",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SuccessGreen
+                        )
+                    }
+                    currentStreak >= 7 -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "🌟 ¡Sigue así!",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Crimson
+                        )
+                    }
+                    currentStreak > 0 -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "💪 ¡Buen trabajo!",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
         }

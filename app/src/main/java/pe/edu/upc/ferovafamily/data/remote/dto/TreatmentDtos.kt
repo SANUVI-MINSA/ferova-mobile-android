@@ -13,12 +13,15 @@ data class ConfirmDoseRequest(
 // ── Responses ──────────────────────────────────────────────────────────────────
 
 data class TodayDoseDto(
-    @SerializedName("canConfirm")    val canConfirm: Boolean?,
-    @SerializedName("scheduledTime") val scheduledTime: String?,
-    @SerializedName("confirmedAt")   val confirmedAt: String?,
-    @SerializedName("message")       val message: String?
+    @SerializedName("patientId") val patientId: String?,
+    @SerializedName("treatmentId") val treatmentId: String?,
+    @SerializedName("dailyDoseId") val dailyDoseId: String?,
+    @SerializedName("scheduledDate") val scheduledDate: String?,
+    @SerializedName("status") val status: String?,
+    @SerializedName("canConfirm") val canConfirm: Boolean?,
+    @SerializedName("dosingHours") val dosingHours: String?,
+    @SerializedName("message") val message: String?
 )
-
 data class DoseRecordDto(
     @SerializedName("id")                       val id: String?,
     @SerializedName("treatmentId")              val treatmentId: String?,      // ← NUEVO

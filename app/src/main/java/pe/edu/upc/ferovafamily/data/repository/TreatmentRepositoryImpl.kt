@@ -1,6 +1,7 @@
 package pe.edu.upc.ferovafamily.data.repository
 
 import android.util.Log
+import pe.edu.upc.ferovafamily.data.mapper.toDomain
 import pe.edu.upc.ferovafamily.data.remote.api.TreatmentApiService
 import pe.edu.upc.ferovafamily.data.remote.dto.ConfirmDoseRequest
 import pe.edu.upc.ferovafamily.domain.model.DoseHistory
@@ -22,12 +23,13 @@ class TreatmentRepositoryImpl(
 
         if (response.isSuccessful && response.body() != null) {
             val body = response.body()!!
-            return TodayDose(
-                patientId = patientId,
-                canConfirm = body.canConfirm ?: false,
-                scheduledTime = body.scheduledTime ?: "08:00 AM",
-                confirmedAt = body.confirmedAt
-            )
+
+            //  Si no tiene tratamiento activo, lanzar excepción
+            if (body.message == "Treatment has not started yet") {
+                throw Exception("No active treatment")
+            }
+
+            return body.toDomain(patientId)
         } else {
             throw Exception("Failed to get today's dose: ${response.code()}")
         }
@@ -87,7 +89,7 @@ class TreatmentRepositoryImpl(
                 treatmentId = body.treatmentId ?: "",
                 scheduledDate = body.scheduledDate ?: "",
                 confirmedAt = body.confirmedAt,
-                status = body.status ?: "CONFIRMED",
+                status = body.status ?: "",
                 hoursWithoutConfirmation = body.hoursWithoutConfirmation ?: 0
             )
         } else {

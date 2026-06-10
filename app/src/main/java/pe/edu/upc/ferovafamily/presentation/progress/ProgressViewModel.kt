@@ -14,6 +14,7 @@ import pe.edu.upc.ferovafamily.data.remote.api.AchievementApiService
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
 import pe.edu.upc.ferovafamily.data.repository.AchievementRepositoryImpl
 import pe.edu.upc.ferovafamily.data.repository.PatientRepositoryImpl
+import pe.edu.upc.ferovafamily.domain.model.Badge
 import pe.edu.upc.ferovafamily.domain.repository.AchievementRepository
 import pe.edu.upc.ferovafamily.domain.repository.PatientRepository
 import pe.edu.upc.ferovafamily.presentation.progress.model.HemoglobinPoint
@@ -44,8 +45,6 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         val patientId = tokenManager.selectedChildId ?: tokenManager.userId
 
         Log.d(TAG, "loadData - patientId: $patientId")
-        Log.d(TAG, "selectedChildId: ${tokenManager.selectedChildId}")
-        Log.d(TAG, "userId: ${tokenManager.userId}")
 
         if (patientId.isNullOrBlank()) {
             Log.e(TAG, "patientId is null or blank, loading mock data")
@@ -57,10 +56,18 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             try {
                 Log.d(TAG, "Fetching achievement progress...")
                 val progress = achievementRepository.getAchievementProgress(patientId)
-                Log.d(TAG, "Progress received: points=${progress.points}, streak=${progress.currentStreak}")
+                Log.d(TAG, "Progress received: points=${progress.points}, streak=${progress.currentStreak}, status=${progress.healthStatus}")
 
-                Log.d(TAG, "Fetching badges...")
-                val badges = achievementRepository.getBadges(patientId)
+                // Determinar si tiene tratamiento activo
+                val hasActiveTreatment = progress.healthStatus == "ACTIVE"
+                Log.d(TAG, "Has active treatment: $hasActiveTreatment")
+
+                // Cargar badges solo si tiene tratamiento activo
+                val badges = if (hasActiveTreatment) {
+                    achievementRepository.getBadges(patientId)
+                } else {
+                    emptyList()
+                }
                 Log.d(TAG, "Badges received: ${badges.size}")
 
                 Log.d(TAG, "Fetching hemoglobin evolution...")
@@ -73,7 +80,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 }
                 val lastHemoglobin = hemoglobin.lastOrNull()?.value ?: 0f
 
-                // ✅ ACTUALIZAR STATE
+                // Actualizar estado
                 _state.value = ProgressStats(
                     healthStatus = progress.healthStatus,
                     totalPoints = progress.points,
@@ -81,7 +88,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                     longestStreak = progress.bestStreak,
                     currentHemoglobin = lastHemoglobin,
                     hemoglobinHistory = hemoglobinPoints,
-                    medals = buildMedalsFromBadges(badges, progress.currentStreak)
+                    medals = buildMedalsFromBadges(badges, progress.currentStreak, hasActiveTreatment)
                 )
 
                 Log.d(TAG, "State updated - points: ${_state.value.totalPoints}, medals: ${_state.value.medals.size}")
@@ -93,12 +100,24 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun buildMedalsFromBadges(badges: List<pe.edu.upc.ferovafamily.domain.model.Badge>, currentStreak: Int): List<Medal> {
+    private fun buildMedalsFromBadges(
+        badges: List<Badge>,
+        currentStreak: Int,
+        hasActiveTreatment: Boolean
+    ): List<Medal> {
+        // Si no hay tratamiento activo, no mostrar medallas
+        if (!hasActiveTreatment) {
+            return emptyList()
+        }
+
+        // Si no hay badges del backend, usar medallas por defecto (solo si hay tratamiento)
         if (badges.isEmpty()) {
             return buildDefaultMedals(currentStreak)
         }
 
         return badges.map { badge ->
+            val actualProgress = maxOf(badge.currentProgress, currentStreak)
+
             Medal(
                 id = badge.id,
                 type = when (badge.category) {
@@ -109,8 +128,8 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 },
                 title = badge.name,
                 description = badge.description,
-                isUnlocked = badge.isUnlocked,
-                currentDays = badge.currentProgress,
+                isUnlocked = badge.isUnlocked || actualProgress >= badge.targetProgress,
+                currentDays = actualProgress,
                 targetDays = badge.targetProgress,
                 celebrationMessage = "¡${badge.name} desbloqueada!"
             )

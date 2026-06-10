@@ -3,11 +3,8 @@ package pe.edu.upc.ferovafamily.data.repository
 import android.util.Log
 import pe.edu.upc.ferovafamily.data.mapper.toDomain
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
-import pe.edu.upc.ferovafamily.data.remote.dto.CreateMedicalRecordRequest
-import pe.edu.upc.ferovafamily.data.remote.dto.HemoglobinControlRequest
 import pe.edu.upc.ferovafamily.data.remote.dto.RegisterPatientRequest
 import pe.edu.upc.ferovafamily.domain.model.HemoglobinRecord
-import pe.edu.upc.ferovafamily.domain.model.MedicalRecord
 import pe.edu.upc.ferovafamily.domain.model.Patient
 import pe.edu.upc.ferovafamily.domain.repository.PatientRepository
 
@@ -87,27 +84,5 @@ class PatientRepositoryImpl(
         } catch (_: Exception) { isoDate }
     }
 
-    /** NURSE only — 403 para rol Mother */
-    override suspend fun createMedicalRecord(patientId: String, initialHemoglobin: Double, diagnosis: String): MedicalRecord {
-        val response = service.createMedicalRecord(
-            CreateMedicalRecordRequest(patientId, initialHemoglobin, diagnosis)
-        )
-        return if (response.isSuccessful) {
-            MedicalRecord(
-                id = response.body()?.id ?: java.util.UUID.randomUUID().toString(),
-                patientId = patientId, initialHemoglobin = initialHemoglobin, diagnosis = diagnosis
-            )
-        } else throw Exception("createMedicalRecord HTTP ${response.code()}")
-    }
-
-    /** NURSE only — 403 para rol Mother */
-    override suspend fun registerHemoglobinControl(patientId: String, hemoglobinLevel: Double, date: String): HemoglobinRecord {
-        val response = service.registerHemoglobinControl(
-            HemoglobinControlRequest(patientId, hemoglobinLevel, date)
-        )
-        return if (response.isSuccessful) {
-            HemoglobinRecord(date = date, value = hemoglobinLevel.toFloat())
-        } else throw Exception("registerHemoglobinControl HTTP ${response.code()}")
-    }
 
 }
