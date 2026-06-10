@@ -4,6 +4,7 @@ import pe.edu.upc.ferovafamily.data.remote.dto.AchievementProgressDto
 import pe.edu.upc.ferovafamily.data.remote.dto.BadgeDto
 import pe.edu.upc.ferovafamily.domain.model.AchievementProgress
 import pe.edu.upc.ferovafamily.domain.model.Badge
+import kotlin.math.min
 
 fun AchievementProgressDto.toDomain(): AchievementProgress = AchievementProgress(
     points        = totalPoints   ?: 0,
@@ -17,7 +18,7 @@ fun BadgeDto.toDomain(currentStreak: Int = 0): Badge = Badge(
     name            = name ?: "",
     description     = description ?: "",
     isUnlocked      = isUnlocked ?: false,
-    currentProgress = milestone?.let { (progress ?: 0) * it / 100 } ?: 0,  // 28% de 7 = 1.96 → 2 días
+    currentProgress = min(currentStreak, milestone ?: daysNeeded ?: 1),
     targetProgress  = milestone ?: daysNeeded ?: 1,
     unlockedAt      = unlockedAt,
     category        = type ?: ""
