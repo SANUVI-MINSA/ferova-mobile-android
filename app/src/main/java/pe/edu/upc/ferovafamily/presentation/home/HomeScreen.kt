@@ -323,7 +323,13 @@ private fun DoseCard(
     val canConfirm = todayDose?.canConfirm == true
     val scheduledTime = todayDose?.scheduledTime ?: "08:00 AM"
     val isConfirmed = todayDose?.confirmedAt != null
-    val hasTreatment = todayDose != null  // Si existe el objeto, tiene tratamiento
+    val hasTreatment = todayDose != null
+
+    // Obtener fecha actual formateada
+    val currentDate = java.time.LocalDate.now()
+    val formattedDate = currentDate.format(
+        java.time.format.DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", java.util.Locale("es"))
+    ).replaceFirstChar { it.uppercase() }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -332,6 +338,7 @@ private fun DoseCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, SoftPink)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Cabecera
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -372,22 +379,39 @@ private fun DoseCard(
                 }
             }
 
+            Spacer(Modifier.height(8.dp))
+
+            // Mostrar fecha actual
+            Text(
+                text = formattedDate,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray
+            )
+
             Spacer(Modifier.height(12.dp))
 
             // Mostrar horario programado (solo si tiene tratamiento)
             if (hasTreatment) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Horario programado:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "",
+                            fontSize = 18.sp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Horario programado:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
                     Text(
                         text = scheduledTime,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Crimson
                     )
@@ -395,7 +419,7 @@ private fun DoseCard(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // Estado de la dosis de hoy - ORDEN CORREGIDO
+            // Estado de la dosis de hoy
             when {
                 // Caso 1: Dosis ya confirmada hoy
                 isConfirmed -> {
@@ -408,23 +432,21 @@ private fun DoseCard(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = SuccessGreen,
-                                modifier = Modifier.size(20.dp)
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = "¡Dosis confirmada hoy!",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = SuccessGreen,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
                 }
-                // Caso 2: NO tiene tratamiento activo (todayDose es null)
+                // Caso 2: NO tiene tratamiento activo
                 !hasTreatment -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -435,11 +457,9 @@ private fun DoseCard(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.MedicalServices,
-                                contentDescription = null,
-                                tint = Color(0xFF856404),
-                                modifier = Modifier.size(18.dp)
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
@@ -450,8 +470,33 @@ private fun DoseCard(
                         }
                     }
                 }
-                // Caso 3: Tiene tratamiento pero no puede confirmar (dosis ya confirmada o no hay dosis hoy)
-                !canConfirm -> {
+                // Caso 3: Tiene tratamiento pero dosis pendiente
+                canConfirm -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Crimson.copy(alpha = 0.1f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Dosis pendiente para hoy",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Crimson,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+                // Caso 4: Tiene tratamiento pero no puede confirmar
+                else -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = CancelRed.copy(alpha = 0.1f)),
@@ -461,15 +506,13 @@ private fun DoseCard(
                             modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.MedicalServices,
-                                contentDescription = null,
-                                tint = CancelRed,
-                                modifier = Modifier.size(20.dp)
+                            Text(
+                                text = "",
+                                fontSize = 18.sp
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Ya confirmaste la dosis de hoy o no hay dosis pendiente",
+                                text = "No hay dosis pendiente para hoy",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = CancelRed
                             )
@@ -480,6 +523,7 @@ private fun DoseCard(
 
             Spacer(Modifier.height(12.dp))
 
+            // Botón de confirmación
             Button(
                 onClick = onConfirmDose,
                 modifier = Modifier.fillMaxWidth(),
@@ -498,10 +542,9 @@ private fun DoseCard(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color.White
+                    Text(
+                        text = "",
+                        fontSize = 18.sp
                     )
                 }
                 Spacer(Modifier.width(8.dp))
@@ -514,7 +557,6 @@ private fun DoseCard(
         }
     }
 }
-
 @Composable
 private fun AchievementMiniCard(modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
