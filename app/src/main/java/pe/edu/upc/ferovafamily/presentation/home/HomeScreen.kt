@@ -161,7 +161,11 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                AchievementMiniCard(modifier = Modifier.weight(1f))
+                AchievementMiniCard(
+                    currentStreak = uiState.currentStreak,
+                    totalPoints = uiState.totalPoints,
+                    modifier = Modifier.weight(1f)
+                )
                 NutritionMiniCard(modifier = Modifier.weight(1f))
             }
 
@@ -558,7 +562,11 @@ private fun DoseCard(
     }
 }
 @Composable
-private fun AchievementMiniCard(modifier: Modifier = Modifier) {
+private fun AchievementMiniCard(
+    currentStreak: Int,
+    totalPoints: Int,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier) {
         Text(
             text = "Logro",
@@ -575,15 +583,15 @@ private fun AchievementMiniCard(modifier: Modifier = Modifier) {
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = "Racha Actual: 5 dias",
+                    text = "Racha Actual: $currentStreak ${if (currentStreak == 1) "día" else "días"}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Crimson,
+                    color = if (currentStreak >= 7) SuccessGreen else Crimson,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Puntos: 50",
+                        text = "Puntos: $totalPoints",
                         style = MaterialTheme.typography.bodySmall,
                         color = Crimson,
                         fontWeight = FontWeight.SemiBold
@@ -595,6 +603,33 @@ private fun AchievementMiniCard(modifier: Modifier = Modifier) {
                         tint = Crimson,
                         modifier = Modifier.size(16.dp)
                     )
+                }
+                // Mostrar emoji según racha
+                when {
+                    currentStreak >= 30 -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "🔥 ¡Racha increíble!",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SuccessGreen
+                        )
+                    }
+                    currentStreak >= 7 -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "🌟 ¡Sigue así!",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Crimson
+                        )
+                    }
+                    currentStreak > 0 -> {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "💪 ¡Buen trabajo!",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
         }
