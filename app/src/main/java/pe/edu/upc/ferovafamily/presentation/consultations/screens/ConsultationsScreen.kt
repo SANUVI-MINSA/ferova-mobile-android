@@ -60,13 +60,13 @@ fun ConsultationsScreen(
                 )
                 Spacer(Modifier.height(16.dp))
 
-                state.children.forEach { child ->
+                state.patients.forEach { patient ->
                     ChildCard(
-                        child = child,
+                        patient = patient,
                         onWriteConsultation = {
-                            val existing = viewModel.getOpenConsultationFor(child.id)
+                            val existing = viewModel.getOpenConsultationFor(patient.patientId)
                             if (existing != null) onOpenChat(existing.id)
-                            else onWriteForChild(child.id)
+                            else onWriteForChild(patient.patientId)
                         }
                     )
                 }
