@@ -10,7 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import pe.edu.upc.ferovafamily.presentation.consultations.model.Message
+import pe.edu.upc.ferovafamily.domain.model.communication.Message
 
 private val Crimson = Color(0xFF8B1A1A)
 private val NurseBubble = Color(0xFFF1E4E4)
