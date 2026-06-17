@@ -28,9 +28,17 @@ fun NewConsultationScreen(
     viewModel: ConsultationsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    val child = state.children.firstOrNull { it.id == childId }
-    val nurse = state.nurse
+    val patient = remember(state.patients) { viewModel.getPatientById(childId) }
+    val nurse = patient?.nurse
     var messageText by remember { mutableStateOf("") }
+
+    // Navegación reactiva: cuando la consulta se crea en el backend, vamos al chat.
+    LaunchedEffect(state.createdConsultationId) {
+        state.createdConsultationId?.let { id ->
+            viewModel.consumeCreatedConsultation()
+            onConsultationCreated(id)
+        }
+    }
 
     Scaffold(
         containerColor = Cream,
@@ -38,7 +46,7 @@ fun NewConsultationScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Consulta para ${child?.name ?: ""}",
+                        text = "Consulta para ${patient?.patientName ?: ""}",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -63,7 +71,7 @@ fun NewConsultationScreen(
         ) {
             Text(
                 text = "Tu mensaje será enviado directamente a la " +
-                        "especialista asignada para el seguimiento de ${child?.name ?: ""}.",
+                        "especialista asignada para el seguimiento de ${patient?.patientName ?: ""}.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
@@ -84,7 +92,7 @@ fun NewConsultationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 160.dp),
-                placeholder = { Text("Escribe aquí tus dudas sobre ${child?.name ?: ""}") },
+                placeholder = { Text("Escribe aquí tus dudas sobre ${patient?.patientName ?: ""}") },
                 shape = RoundedCornerShape(8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Crimson,
@@ -95,11 +103,8 @@ fun NewConsultationScreen(
             Spacer(Modifier.weight(1f))
 
             Button(
-                onClick = {
-                    val newId = viewModel.createConsultation(childId, messageText.trim())
-                    if (newId.isNotEmpty()) onConsultationCreated(newId)
-                },
-                enabled = messageText.isNotBlank(),
+                onClick = { viewModel.createConsultation(childId, messageText.trim()) },
+                enabled = messageText.isNotBlank() && nurse != null,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Crimson,
