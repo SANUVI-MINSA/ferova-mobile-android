@@ -31,8 +31,26 @@ fun ChatScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val consultation = state.consultations.firstOrNull { it.id == consultationId }
+    val isOpen = consultation?.isOpen != false
     var draft by remember { mutableStateOf("") }
+    var closedDialogDismissed by remember(consultationId) { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    if (consultation != null && !isOpen && !closedDialogDismissed) {
+        AlertDialog(
+            onDismissRequest = { closedDialogDismissed = true },
+            confirmButton = {
+                TextButton(onClick = { closedDialogDismissed = true }) {
+                    Text("Entendido", color = Crimson)
+                }
+            },
+            title = { Text("Esta consulta está cerrada") },
+            text = { Text("Para seguir conversando con la enfermera debes crear una nueva consulta.") }
+        )
+    }
+
+    // Sincroniza el chat con el backend al entrar.
+    LaunchedEffect(consultationId) { viewModel.loadChat(consultationId) }
 
     LaunchedEffect(consultation?.messages?.size) {
         consultation?.let {
@@ -54,12 +72,12 @@ fun ChatScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Surface(
-                            color = Crimson,
+                            color = if (isOpen) Crimson else Color.Gray,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.padding(top = 2.dp)
                         ) {
                             Text(
-                                text = "ENFERMERA EN LÍNEA",
+                                text = if (isOpen) "SINCRONIZADO CON CLOUD" else "CONSULTA CERRADA",
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -80,16 +98,20 @@ fun ChatScreen(
             )
         },
         bottomBar = {
-            ChatInputBar(
-                value = draft,
-                onValueChange = { draft = it },
-                onSend = {
-                    if (draft.isNotBlank()) {
-                        viewModel.sendMessage(consultationId, draft)
-                        draft = ""
+            if (isOpen) {
+                ChatInputBar(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    onSend = {
+                        if (draft.isNotBlank()) {
+                            viewModel.sendMessage(consultationId, draft)
+                            draft = ""
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                ClosedConsultationBar()
+            }
         }
     ) { padding ->
         if (consultation == null) {
@@ -157,5 +179,19 @@ private fun ChatInputBar(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ClosedConsultationBar() {
+    Surface(color = Cream, tonalElevation = 4.dp) {
+        Text(
+            text = "Esta consulta está cerrada. Crea una nueva para seguir consultando.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        )
     }
 }
