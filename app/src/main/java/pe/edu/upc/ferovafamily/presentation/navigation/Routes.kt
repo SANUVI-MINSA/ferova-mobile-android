@@ -23,3 +23,12 @@ object TreatmentTrackingRoute
 
 @Serializable
 object NewPasswordRoute
+
+@Serializable
+object AyudaRoute
+
+@Serializable
+object SeguridadRoute
+
+@Serializable
+object PrivacidadRoute
