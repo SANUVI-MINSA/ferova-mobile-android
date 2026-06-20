@@ -1,47 +1,85 @@
 package pe.edu.upc.ferovafamily.data.repository
 
+import android.util.Log
 import pe.edu.upc.ferovafamily.data.mapper.toDomain
 import pe.edu.upc.ferovafamily.data.remote.api.AchievementApiService
 import pe.edu.upc.ferovafamily.domain.model.AchievementProgress
 import pe.edu.upc.ferovafamily.domain.model.Badge
 import pe.edu.upc.ferovafamily.domain.repository.AchievementRepository
 
+private const val TAG = "AchievementRepo"
+
 class AchievementRepositoryImpl(
     private val service: AchievementApiService
 ) : AchievementRepository {
 
     override suspend fun getAchievementProgress(patientId: String): AchievementProgress {
+        Log.d(TAG, "getAchievementProgress called with patientId: $patientId")
         return try {
             val response = service.getAchievementProgress(patientId)
-            if (response.isSuccessful) response.body()?.toDomain() ?: mockProgress()
-            else mockProgress()
-        } catch (_: Exception) { mockProgress() }
+            Log.d(TAG, "Response code: ${response.code()}")
+
+            if (response.isSuccessful) {
+                val body = response.body()
+                Log.d(TAG, "Response body: $body")
+
+                body?.let { dto ->
+                    Log.d(TAG, "totalPoints: ${dto.totalPoints}, currentStreak: ${dto.currentStreak}, longestStreak: ${dto.longestStreak}, status: ${dto.status}")
+                    AchievementProgress(
+                        points = dto.totalPoints ?: 0,
+                        currentStreak = dto.currentStreak ?: 0,
+                        bestStreak = dto.longestStreak ?: 0,
+                        healthStatus = dto.status ?: "",
+                    )
+                } ?: run {
+                    Log.e(TAG, "Response body is null")
+                    mockProgress()
+                }
+            } else {
+                Log.e(TAG, "Response not successful: ${response.code()} - ${response.message()}")
+                mockProgress()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception in getAchievementProgress", e)
+            mockProgress()
+        }
     }
 
     override suspend fun getBadges(patientId: String): List<Badge> {
+        Log.d(TAG, "getBadges called with patientId: $patientId")
         return try {
+            val progress = getAchievementProgress(patientId)
+            val currentStreak = progress.currentStreak
+            Log.d(TAG, "Current streak for validation: $currentStreak")
+
             val response = service.getBadges(patientId)
+            Log.d(TAG, "Badges response code: ${response.code()}")
+
             if (response.isSuccessful) {
                 val body = response.body()
-                // Si el backend devuelve lista vacía (sin tratamiento activo) → mock
-                val badges = body?.badges?.map { it.toDomain() } ?: emptyList()
-                if (badges.isEmpty()) mockBadges() else badges
-            } else mockBadges()
-        } catch (_: Exception) { mockBadges() }
+                Log.d(TAG, "Badges response body: $body")
+
+                val badgesList = body?.badges
+                Log.d(TAG, "Badges list size: ${badgesList?.size ?: 0}")
+
+                badgesList?.forEachIndexed { index, badge ->
+                    Log.d(TAG, "Badge $index: id=${badge.id}, type=${badge.type}, name=${badge.name}, isUnlocked=${badge.isUnlocked}, progress=${badge.progress}, milestone=${badge.milestone}")
+                }
+
+                val mapped = badgesList?.map { it.toDomain(currentStreak) } ?: emptyList()
+                Log.d(TAG, "Mapped badges count: ${mapped.size}")
+                mapped
+            } else {
+                Log.e(TAG, "Badges response not successful: ${response.code()} - ${response.message()}")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception in getBadges", e)
+            emptyList()
+        }
     }
 
-    // ── Mock data ─────────────────────────────────────────────────────────────
-
     private fun mockProgress() = AchievementProgress(
-        points = 70, currentStreak = 7, bestStreak = 30, healthStatus = "Activo"
-    )
-
-    private fun mockBadges() = listOf(
-        Badge("b-1", "Primera Dosis",    "Completaste tu primera dosis",       true,  1, 1,  category = "DOSE"),
-        Badge("b-2", "Racha de 5 días",  "5 días consecutivos con la dosis",   true,  5, 5,  category = "STREAK"),
-        Badge("b-3", "Primera Consulta", "Iniciaste tu primera consulta",       true,  1, 1,  category = "CONSULTATION"),
-        Badge("b-4", "Racha de 15 días", "15 días consecutivos sin fallar",     false, 7, 15, category = "STREAK"),
-        Badge("b-5", "Nutricionista",    "Registra 30 comidas en el diario",    false, 5, 30, category = "NUTRITION"),
-        Badge("b-6", "Maestro del Hierro","Alcanza 100mg de hierro en un mes",  false, 0, 100,category = "NUTRITION")
+        points = 0, currentStreak = 0, bestStreak = 0, healthStatus = "Pendiente"
     )
 }

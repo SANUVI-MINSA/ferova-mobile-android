@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.treatment_tracking
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,8 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
-// Colores
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
 private val SoftPink = Color(0xFFF9E8E8)
@@ -32,7 +35,7 @@ private val ConfirmedGreenBg = Color(0xFFE6F7F0)
 private val ConfirmedGreenText = Color(0xFF0F9D58)
 private val OmittedRedBg = Color(0xFFFFEBEE)
 private val OmittedRedText = Color(0xFFD32F2F)
-private val PureBlack = Color(0xFF000000) // #000
+private val PureBlack = Color(0xFF000000)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,82 +46,98 @@ fun TreatmentTrackingScreen(
     val uiState by viewModel.uiState.collectAsState()
     val historyGrouped = viewModel.doseHistoryGrouped
 
+    LaunchedEffect(uiState) {
+        Log.d("TreatmentScreen", "UI State - patientName: ${uiState.patientName}")
+        Log.d("TreatmentScreen", "UI State - doses: ${uiState.doseHistory.size}")
+        Log.d("TreatmentScreen", "UI State - isLoading: ${uiState.isLoading}")
+        Log.d("TreatmentScreen", "UI State - error: ${uiState.errorMessage}")
+    }
+
     Scaffold(
         containerColor = Cream,
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "Historial de Dosis",
-                        color = Crimson,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
+                title = { Text("Historial de Dosis", color = Crimson, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = Crimson
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Crimson)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Cream)
             )
         }
     ) { padding ->
-        if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Crimson)
+        when {
+            uiState.isLoading -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Crimson)
+                }
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp)
-            ) {
-                Spacer(Modifier.height(16.dp))
-
-                // ─── Tarjeta del Niño ───
-                ChildMedicationCard()
-
-                Spacer(Modifier.height(24.dp))
-
-                // ─── Secciones por fecha (datos reales o mock) ───
-                if (historyGrouped.isEmpty()) {
-                    Text(
-                        "Sin historial de dosis",
-                        color = Color.Gray,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    historyGrouped.forEach { (date, records) ->
-                        SectionHeader(date)
-                        records.forEach { record ->
-                            val isConfirmed = record.status == "CONFIRMED"
-                            DoseHistoryItem(
-                                time   = record.confirmedAt ?: "08:00 AM",
-                                detail = if (isConfirmed)
-                                    "Confirmada a las ${record.confirmedAt ?: ""}"
-                                else
-                                    "Omitida — Sin confirmación",
-                                status = if (isConfirmed) DoseStatus.Confirmed else DoseStatus.Omitted
-                            )
+            uiState.errorMessage != null -> {
+                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "Error: ${uiState.errorMessage}", color = Color.Red)
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { viewModel.loadData() }) {
+                            Text("Reintentar")
                         }
-                        Spacer(Modifier.height(16.dp))
                     }
                 }
+            }
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                ) {
+                    Spacer(Modifier.height(16.dp))
 
-                Spacer(Modifier.height(32.dp))
+                    ChildMedicationCard(
+                        patientName = uiState.patientName,
+                        supplementName = uiState.supplementName,
+                        quantity = uiState.quantity,
+                        dosingHours = uiState.dosingHours
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    if (historyGrouped.isEmpty()) {
+                        Text(
+                            "No hay historial de dosis aún",
+                            color = Color.Gray,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        // Mostrar todas las dosis sin agrupar por fecha
+                        val allDoses = uiState.doseHistory
+                        allDoses.forEach { record ->
+                            DoseHistoryItem(
+                                time = formatTime(record.scheduledDate),
+                                detail = if (record.status == "CONFIRMED")
+                                    "Confirmada a las ${formatTime(record.confirmedAt ?: "")}"
+                                else
+                                    "Omitida — Sin confirmación",
+                                status = if (record.status == "CONFIRMED") DoseStatus.Confirmed else DoseStatus.Omitted
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(32.dp))
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ChildMedicationCard() {
+private fun ChildMedicationCard(
+    patientName: String,
+    supplementName: String,
+    quantity: String,
+    dosingHours: String
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -131,61 +150,26 @@ private fun ChildMedicationCard() {
         ) {
             Box(contentAlignment = Alignment.BottomEnd) {
                 Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .background(SoftPink, CircleShape),
+                    modifier = Modifier.size(60.dp).background(SoftPink, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = Crimson,
-                        modifier = Modifier.size(36.dp)
-                    )
+                    Icon(Icons.Default.Person, contentDescription = null, tint = Crimson, modifier = Modifier.size(36.dp))
                 }
                 Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .background(Crimson, CircleShape),
+                    modifier = Modifier.size(22.dp).background(Crimson, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Medication,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(14.dp)
-                    )
+                    Icon(Icons.Default.Medication, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                 }
             }
-
             Spacer(Modifier.width(16.dp))
-
             Column {
-                Text(
-                    text = "Mateo",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Crimson
-                )
-                Text(
-                    text = "Amoxicilina - 500ml",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
+                Text(text = patientName.ifBlank { "Paciente" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Crimson)
+                Text(text = "$supplementName - ${quantity}mg", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                Text(text = "Horario: $dosingHours", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
         }
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.bodySmall,
-        fontWeight = FontWeight.Bold,
-        color = Crimson,
-        modifier = Modifier.padding(bottom = 12.dp)
-    )
 }
 
 enum class DoseStatus { Confirmed, Omitted }
@@ -198,10 +182,10 @@ private fun DoseHistoryItem(
 ) {
     val (bgColor, textColor, labelText, icon) = when (status) {
         DoseStatus.Confirmed -> DoseItemUI(
-            ConfirmedGreenBg, ConfirmedGreenText, "CONFIRMED", Icons.Default.CheckCircle
+            ConfirmedGreenBg, ConfirmedGreenText, "CONFIRMADA", Icons.Default.CheckCircle
         )
         DoseStatus.Omitted -> DoseItemUI(
-            OmittedRedBg, OmittedRedText, "OMITTED", Icons.Default.Cancel
+            OmittedRedBg, OmittedRedText, "OMITIDA", Icons.Default.Cancel
         )
     }
 
@@ -272,3 +256,11 @@ data class DoseItemUI(
     val labelText: String,
     val icon: ImageVector
 )
+private fun formatTime(isoDate: String): String {
+    return try {
+        val parsed = LocalDateTime.parse(isoDate)
+        parsed.format(DateTimeFormatter.ofPattern("hh:mm a"))
+    } catch (e: Exception) {
+        "08:00 AM"
+    }
+}

@@ -7,9 +7,6 @@ object MainRoutes {
     const val APPOINTMENTS = "appointments"
     const val CONSULTATIONS_TAB = "consultations_tab"
 
-    // Subpantallas
-    const val NOTIFICATIONS = "notifications"
-
     // Ruta del scaffold padre (la que va en NavGraph principal)
     const val MAIN = "main"
 }

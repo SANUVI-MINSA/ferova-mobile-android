@@ -1,4 +1,4 @@
-package pe.edu.upc.ferovafamily.presentation.consultations.model
+package pe.edu.upc.ferovafamily.domain.model.communication
 
 data class Message(
     val id: String,

@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.consultations.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import pe.edu.upc.ferovafamily.presentation.consultations.ConsultationsViewModel
 import pe.edu.upc.ferovafamily.presentation.consultations.components.MessageBubble
 
@@ -31,8 +33,28 @@ fun ChatScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val consultation = state.consultations.firstOrNull { it.id == consultationId }
+    val isOpen = consultation?.isOpen != false
     var draft by remember { mutableStateOf("") }
+    var closedDialogDismissed by remember(consultationId) { mutableStateOf(false) }
+    var notFoundDialogDismissed by remember(consultationId) { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    // ✅ CONTADOR DE INTENTOS FALLIDOS
+    var failedAttempts by remember { mutableStateOf(0) }
+
+    Log.d("ChatScreen", "Consultation: $consultationId, isOpen: $isOpen, messages: ${consultation?.messages?.size ?: 0}")
+
+    // ✅ CARGAR EL CHAT + POLLING
+    LaunchedEffect(consultationId) {
+        Log.d("ChatScreen", "Cargando chat para $consultationId")
+        viewModel.loadChat(consultationId)
+
+        while (true) {
+            delay(5000)
+            Log.d("ChatScreen", "Polling: refrescando mensajes...")
+            viewModel.loadChat(consultationId)
+        }
+    }
 
     LaunchedEffect(consultation?.messages?.size) {
         consultation?.let {
@@ -40,6 +62,46 @@ fun ChatScreen(
                 listState.animateScrollToItem(it.messages.size - 1)
             }
         }
+    }
+
+    // ✅ DIALOG PARA CONSULTA NO ENCONTRADA - SOLO DESPUÉS DE 3 INTENTOS FALLIDOS
+    if (consultation == null && failedAttempts >= 3 && !notFoundDialogDismissed) {
+        AlertDialog(
+            onDismissRequest = {
+                notFoundDialogDismissed = true
+                onBack()
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    notFoundDialogDismissed = true
+                    onBack()
+                }) {
+                    Text("Entendido", color = Crimson)
+                }
+            },
+            title = { Text("Consulta no disponible") },
+            text = { Text("Esta consulta ya no está activa. Es posible que haya sido cerrada por la enfermera.") }
+        )
+    }
+
+    // ✅ DIALOG PARA CONSULTA CERRADA
+    if (consultation != null && !isOpen && !closedDialogDismissed) {
+        AlertDialog(
+            onDismissRequest = {
+                closedDialogDismissed = true
+                onBack()
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    closedDialogDismissed = true
+                    onBack()
+                }) {
+                    Text("Entendido", color = Crimson)
+                }
+            },
+            title = { Text("Esta consulta está cerrada") },
+            text = { Text("Para seguir conversando con la enfermera debes crear una nueva consulta.") }
+        )
     }
 
     Scaffold(
@@ -54,12 +116,12 @@ fun ChatScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Surface(
-                            color = Crimson,
+                            color = if (consultation != null && isOpen) Crimson else Color.Gray,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.padding(top = 2.dp)
                         ) {
                             Text(
-                                text = "ENFERMERA EN LÍNEA",
+                                text = if (consultation != null && isOpen) "SINCRONIZADO CON CLOUD" else "CONSULTA NO DISPONIBLE",
                                 color = Color.White,
                                 style = MaterialTheme.typography.labelSmall,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -80,16 +142,21 @@ fun ChatScreen(
             )
         },
         bottomBar = {
-            ChatInputBar(
-                value = draft,
-                onValueChange = { draft = it },
-                onSend = {
-                    if (draft.isNotBlank()) {
-                        viewModel.sendMessage(consultationId, draft)
-                        draft = ""
+            if (consultation != null && isOpen) {
+                ChatInputBar(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    onSend = {
+                        if (draft.isNotBlank()) {
+                            Log.d("ChatScreen", "Enviando mensaje: ${draft.take(50)}...")
+                            viewModel.sendMessage(consultationId, draft)
+                            draft = ""
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                ClosedConsultationBar()
+            }
         }
     ) { padding ->
         if (consultation == null) {
@@ -99,7 +166,11 @@ fun ChatScreen(
                     .padding(padding),
                 contentAlignment = androidx.compose.ui.Alignment.Center
             ) {
-                Text("Consulta no encontrada", color = Color.Gray)
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Crimson)
+                    Spacer(Modifier.height(16.dp))
+                    Text("Cargando consulta...", color = Color.Gray)
+                }
             }
         } else {
             LazyColumn(
@@ -157,5 +228,19 @@ private fun ChatInputBar(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ClosedConsultationBar() {
+    Surface(color = Cream, tonalElevation = 4.dp) {
+        Text(
+            text = "Esta consulta ya no está disponible.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        )
     }
 }

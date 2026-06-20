@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MilitaryTech
@@ -26,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.ferovafamily.presentation.progress.ProgressViewModel
 import pe.edu.upc.ferovafamily.presentation.progress.components.HemoglobinChart
 import pe.edu.upc.ferovafamily.presentation.progress.components.MedalListItem
+import pe.edu.upc.ferovafamily.presentation.progress.model.HemoglobinPoint
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -116,22 +116,41 @@ fun ProgressScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            state.medals.forEach { medal ->
-                MedalListItem(medal = medal, modifier = Modifier.padding(vertical = 4.dp))
+            // MOSTRAR MEDALLAS O MENSAJE SI NO HAY
+            if (state.medals.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SoftPink)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Aún no hay medallas disponibles",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.DarkGray
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Espera que el enfermero(a) inicie con un tratamiento",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            } else {
+                state.medals.forEach { medal ->
+                    MedalListItem(medal = medal, modifier = Modifier.padding(vertical = 4.dp))
+                }
             }
 
             Spacer(Modifier.height(20.dp))
-
-            // ─── Sección de demo (vista previa de pantallas) ───
-            DemoSection(
-                onDoseConfirmed = onPreviewDoseConfirmed,
-                onMedalUnlocked = {
-                    state.medals.firstOrNull()?.id?.let { onPreviewMedalUnlocked(it) }
-                },
-                onStreakLost = onPreviewStreakLost
-            )
-
-            Spacer(Modifier.height(16.dp))
 
             Button(
                 onClick = onNavigateToHome,
@@ -212,7 +231,7 @@ private fun StreakCard(
 }
 
 @Composable
-private fun HemoglobinSection(currentValue: Float, points: List<pe.edu.upc.ferovafamily.presentation.progress.model.HemoglobinPoint>) {
+private fun HemoglobinSection(currentValue: Float, points: List<HemoglobinPoint>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -240,47 +259,16 @@ private fun HemoglobinSection(currentValue: Float, points: List<pe.edu.upc.ferov
                 color = Color.Gray
             )
             Spacer(Modifier.height(8.dp))
-            HemoglobinChart(points = points)
-        }
-    }
-}
-
-@Composable
-private fun DemoSection(
-    onDoseConfirmed: () -> Unit,
-    onMedalUnlocked: () -> Unit,
-    onStreakLost: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = SoftPink),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                "Vista previa de pantallas",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Crimson
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onDoseConfirmed,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Ver: ¡Dosis Confirmada!") }
-            Spacer(Modifier.height(6.dp))
-            OutlinedButton(
-                onClick = onMedalUnlocked,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Ver: Medalla Desbloqueada") }
-            Spacer(Modifier.height(6.dp))
-            OutlinedButton(
-                onClick = onStreakLost,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp)
-            ) { Text("Ver: Perdiste tu racha") }
+            if (points.isEmpty()) {
+                Text(
+                    text = "No hay registros de hemoglobina aún.\nLa enfermera los agregará durante el seguimiento.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                HemoglobinChart(points = points)
+            }
         }
     }
 }

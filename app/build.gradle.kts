@@ -103,4 +103,10 @@ dependencies {
     // OSMDroid — mapa OpenStreetMap nativo sin API key
     implementation(libs.osmdroid.android)
 
+    // Para hacer peticiones HTTP a la API de rutas
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Para polylines en el mapa (dibujar la ruta)
+    implementation("org.osmdroid:osmdroid-android:6.1.17")
 }

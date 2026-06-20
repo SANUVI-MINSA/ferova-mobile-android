@@ -8,6 +8,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +79,9 @@ fun LoginScreen(
     onNavigateToCreateAccount: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
     onNavigateToRecovery: () -> Unit = {},
+    onNavigateToAyuda: () -> Unit = {},
+    onNavigateToSeguridad: () -> Unit = {},
+    onNavigateToPrivacidad: () -> Unit = {},
     viewModel: AuthViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -125,7 +130,10 @@ fun LoginScreen(
             isLoading = uiState.loginResult is AuthResult.Loading,
             onLoginClick = { viewModel.login(dni, password) },
             onNavigateToRecovery = onNavigateToRecovery,
-            onNavigateToCreateAccount = onNavigateToCreateAccount
+            onNavigateToCreateAccount = onNavigateToCreateAccount,
+            onNavigateToAyuda = onNavigateToAyuda,
+            onNavigateToSeguridad = onNavigateToSeguridad,
+            onNavigateToPrivacidad = onNavigateToPrivacidad
         )
     }
 }
@@ -197,7 +205,10 @@ private fun LoginCard(
     isLoading: Boolean,
     onLoginClick: () -> Unit,
     onNavigateToRecovery: () -> Unit,
-    onNavigateToCreateAccount: () -> Unit
+    onNavigateToCreateAccount: () -> Unit,
+    onNavigateToAyuda: () -> Unit = {},
+    onNavigateToSeguridad: () -> Unit = {},
+    onNavigateToPrivacidad: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -210,6 +221,7 @@ private fun LoginCard(
             )
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
             .background(Cream)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -383,21 +395,21 @@ private fun LoginCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            BottomIconItem(icon = Icons.Default.Help, label = "Ayuda")
-            BottomIconItem(icon = Icons.Default.Security, label = "Seguridad")
-            BottomIconItem(icon = Icons.Default.PrivacyTip, label = "Privacidad")
+            BottomIconItem(icon = Icons.Default.Help, label = "Ayuda", onClick = onNavigateToAyuda)
+            BottomIconItem(icon = Icons.Default.Security, label = "Seguridad", onClick = onNavigateToSeguridad)
+            BottomIconItem(icon = Icons.Default.PrivacyTip, label = "Privacidad", onClick = onNavigateToPrivacidad)
         }
     }
 }
 @Composable
-fun BottomIconItem(icon: ImageVector, label: String) {
+fun BottomIconItem(icon: ImageVector, label: String, onClick: () -> Unit = {}) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(Rose)
-                .clickable { },
+                .clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(

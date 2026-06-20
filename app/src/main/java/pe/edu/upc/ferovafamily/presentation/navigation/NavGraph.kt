@@ -22,6 +22,9 @@ import pe.edu.upc.ferovafamily.presentation.shared.NewPasswordScreen
 import pe.edu.upc.ferovafamily.presentation.shared.RecoveryPasswordScreen
 import pe.edu.upc.ferovafamily.presentation.shared.VerificationScreen
 // Asegúrate de que estas rutas de importación coincidan con tu estructura
+import pe.edu.upc.ferovafamily.presentation.shared.AyudaScreen
+import pe.edu.upc.ferovafamily.presentation.shared.SeguridadScreen
+import pe.edu.upc.ferovafamily.presentation.shared.PrivacidadScreen
 import pe.edu.upc.ferovafamily.presentation.treatment_tracking.TreatmentTrackingScreen
 
 @Composable
@@ -80,6 +83,15 @@ fun NavGraph() {
                 },
                 onNavigateToRecovery = {
                     navController.navigate(RecoveryPasswordRoute)
+                },
+                onNavigateToAyuda = {
+                    navController.navigate(AyudaRoute)
+                },
+                onNavigateToSeguridad = {
+                    navController.navigate(SeguridadRoute)
+                },
+                onNavigateToPrivacidad = {
+                    navController.navigate(PrivacidadRoute)
                 }
             )
         }
@@ -146,6 +158,18 @@ fun NavGraph() {
                     navController.popBackStack()
                 }
             )
+        }
+
+        composable<AyudaRoute> {
+            AyudaScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable<SeguridadRoute> {
+            SeguridadScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable<PrivacidadRoute> {
+            PrivacidadScreen(onBack = { navController.popBackStack() })
         }
     }
 }

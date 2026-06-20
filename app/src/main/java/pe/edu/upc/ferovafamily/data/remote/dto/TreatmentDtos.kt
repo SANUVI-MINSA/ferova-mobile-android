@@ -9,36 +9,33 @@ data class ConfirmDoseRequest(
     @SerializedName("confirmedAt") val confirmedAt: String    // ISO 8601
 )
 
-// POST /api/treatment-tracking/treatments  (NURSE only)
-data class StartTreatmentRequest(
-    @SerializedName("patientId")    val patientId: String,
-    @SerializedName("startDate")    val startDate: String,     // "yyyy-MM-dd"
-    @SerializedName("durationDays") val durationDays: Int,     // 90
-    @SerializedName("ironDoseMg")   val ironDoseMg: Double     // mg diarios
-)
 
 // ── Responses ──────────────────────────────────────────────────────────────────
-//
-// GET /api/treatment-tracking/patients/{id}/today-dose →
-// { canConfirm: bool, message: string }
-//
-// GET /api/treatment-tracking/patients/{id}/dose-history →
-// [ { id, patientId, date, confirmedAt, status } ]
-//
-// POST /api/treatment-tracking/doses/confirm →
-// { id, patientId, date, confirmedAt, status }
 
 data class TodayDoseDto(
-    @SerializedName("canConfirm")    val canConfirm: Boolean?,
-    @SerializedName("scheduledTime") val scheduledTime: String?,   // puede o no estar
-    @SerializedName("confirmedAt")   val confirmedAt: String?,
-    @SerializedName("message")       val message: String?
+    @SerializedName("patientId") val patientId: String?,
+    @SerializedName("treatmentId") val treatmentId: String?,
+    @SerializedName("dailyDoseId") val dailyDoseId: String?,
+    @SerializedName("scheduledDate") val scheduledDate: String?,
+    @SerializedName("status") val status: String?,
+    @SerializedName("canConfirm") val canConfirm: Boolean?,
+    @SerializedName("dosingHours") val dosingHours: String?,
+    @SerializedName("message") val message: String?
+)
+data class DoseRecordDto(
+    @SerializedName("id")                       val id: String?,
+    @SerializedName("treatmentId")              val treatmentId: String?,      // ← NUEVO
+    @SerializedName("scheduledDate")            val scheduledDate: String?,    // ← CAMBIA: "date" → "scheduledDate"
+    @SerializedName("confirmedAt")              val confirmedAt: String?,
+    @SerializedName("status")                   val status: String?,
+    @SerializedName("hoursWithoutConfirmation") val hoursWithoutConfirmation: Int?  // ← NUEVO
 )
 
-data class DoseRecordDto(
-    @SerializedName("id")          val id: String?,
-    @SerializedName("patientId")   val patientId: String?,
-    @SerializedName("date")        val date: String?,
-    @SerializedName("confirmedAt") val confirmedAt: String?,
-    @SerializedName("status")      val status: String?        // "CONFIRMED" | "OMITTED"
+data class DoseHistoryResponseDto(
+    @SerializedName("patientId")      val patientId: String?,
+    @SerializedName("patientName")    val patientName: String?,
+    @SerializedName("supplementName") val supplementName: String?,
+    @SerializedName("quantity")       val quantity: String?,
+    @SerializedName("dosingHours")    val dosingHours: String?,
+    @SerializedName("doses")          val doses: List<DoseRecordDto>?
 )

@@ -1,9 +1,9 @@
-package pe.edu.upc.ferovafamily.presentation.consultations.model
+package pe.edu.upc.ferovafamily.domain.model.communication
 
 data class Consultation(
     val id: String,
-    val childId: String,
-    val childName: String,
+    val patientId: String,
+    val patientName: String,
     val nurse: Nurse,
     val isOpen: Boolean = true,
     val messages: List<Message> = emptyList()
