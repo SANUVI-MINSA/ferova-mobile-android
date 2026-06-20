@@ -11,11 +11,16 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -23,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import pe.edu.upc.ferovafamily.data.local.TokenManager
 import pe.edu.upc.ferovafamily.presentation.consultations.ConsultationsRoutes
 import pe.edu.upc.ferovafamily.presentation.consultations.screens.ChatScreen
 import pe.edu.upc.ferovafamily.presentation.consultations.screens.ConsultationsScreen
@@ -46,6 +52,7 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NewNutriti
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalDiaryScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalHistoryScreen
 import pe.edu.upc.ferovafamily.presentation.notifications.NotificationsScreen
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
 import pe.edu.upc.ferovafamily.presentation.patient_management.PatientManagementRoutes
 import pe.edu.upc.ferovafamily.presentation.patient_management.screens.CreatePatientScreen
 
@@ -62,9 +69,14 @@ fun MainScreen(
     val currentRoute = backStackEntry?.destination?.route
 
     val appointmentsViewModel: AppointmentsViewModel = viewModel()
+    val nutritionalDiaryViewModel: NutritionalDiaryViewModel = viewModel()
 
     // El bottom bar sólo se muestra en las pantallas raíz de cada tab
     val showBottomBar = currentRoute in BottomNavItem.items.map { it.route }
+
+    val nutritionalUiState by nutritionalDiaryViewModel.uiState.collectAsState()
+
+    val selectedPatientId = nutritionalUiState.selectedPatient?.id ?: ""
 
     Scaffold(
         containerColor = Cream,
@@ -132,14 +144,27 @@ fun MainScreen(
                 )
             }
 
-            // Tab: Diario (placeholder)
+            // ════════════════════════════════════════════════════════════════
+            // Tab: Diario Nutricional
+            // ════════════════════════════════════════════════════════════════
+
             composable(MainRoutes.DIARY) {
+                // Obtener patientId del TokenManager o usar default
+                val context = LocalContext.current
+                val tokenManager = remember(context) {
+                    TokenManager.getInstance(context)
+                }
+                val patientId = tokenManager.userId ?: "patient-id-default"
+
                 NutritionalDiaryScreen(
+                    patientId = selectedPatientId,
                     onNewFoodEntry = {
                         navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
-                    onSeeFoodHistory = { selectedPatient ->
-                        navController.navigate("diary_history/$selectedPatient")
+                    onSeeFoodHistory = { selectedPatientId ->
+                        navController.navigate(
+                            "${NutritionalDiaryRoutes.HISTORY}/$selectedPatientId"
+                        )
                     }
                 )
             }
@@ -294,26 +319,39 @@ fun MainScreen(
                 )
             }
 
-            // ──────────── SUBPANTALLAS: DIARIO NUTRICIONAL ────────────
+            // ════════════════════════════════════════════════════════════════
+            // SUBPANTALLAS: DIARIO NUTRICIONAL
+            // ════════════════════════════════════════════════════════════════
 
+            // Nueva entrada de alimento
             composable(NutritionalDiaryRoutes.NEW_MEAL) {
+                val context = LocalContext.current
+                val tokenManager = remember(context) {
+                    TokenManager.getInstance(context)
+                }
+                val patientId = tokenManager.userId ?: "patient-id-default"
+
                 NewNutritionalMealScreen(
+                    patientId = selectedPatientId,
                     onBack = { navController.popBackStack() },
-                    onRegisterMeal = { navController.popBackStack() }
+                    onRegisterSuccess = {
+                        navController.popBackStack()
+                    }
                 )
             }
 
+            // Historial nutricional con filtro de fechas
             composable(
-                "diary_history/{patientName}",
-                arguments = listOf(navArgument("patientName") { type = NavType.StringType })
-            )
-            { backStackEntry ->
-                val patientName = backStackEntry.arguments?.getString("patientName") ?: ""
+                route = "${NutritionalDiaryRoutes.HISTORY}/{patientId}",
+                arguments = listOf(navArgument("patientId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val patientId = backStackEntry.arguments?.getString("patientId") ?: ""
                 NutritionalHistoryScreen(
-                    selectedPatient = patientName,
+                    patientId = patientId,
                     onBack = {
                         navController.popBackStack()
-                    })
+                    }
+                )
             }
 
             // ──────────── SUBPANTALLAS: CITAS Y POSTAS ────────────
