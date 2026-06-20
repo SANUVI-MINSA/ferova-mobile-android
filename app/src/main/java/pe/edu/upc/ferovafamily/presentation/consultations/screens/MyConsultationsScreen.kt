@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import pe.edu.upc.ferovafamily.presentation.consultations.ConsultationsViewModel
 import pe.edu.upc.ferovafamily.domain.model.communication.Consultation
 
@@ -31,7 +33,17 @@ fun MyConsultationsScreen(
     viewModel: ConsultationsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    val consultations = state.consultations
+
+    // ✅ Filtrar solo consultas abiertas
+    val consultations = state.consultations.filter { it.isOpen }
+
+    // ✅ POLLING: Actualizar cada 3 segundos para detectar cambios
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(3000)
+            viewModel.loadData()
+        }
+    }
 
     Scaffold(
         containerColor = Cream,

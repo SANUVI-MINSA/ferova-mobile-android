@@ -17,11 +17,13 @@ import pe.edu.upc.ferovafamily.domain.model.communication.PatientWithNurse
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
+private val SuccessGreen = Color(0xFF4CAF50)
 
 @Composable
 fun ChildCard(
     patient: PatientWithNurse,
     onWriteConsultation: () -> Unit,
+    hasActiveConsultation: Boolean = false,  // ✅ NUEVO PARÁMETRO
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -61,19 +63,36 @@ fun ChildCard(
                 }
             }
             Spacer(Modifier.height(12.dp))
+
+            // ✅ BOTÓN CON ESTADO DE CONSULTA ACTIVA
             Button(
                 onClick = onWriteConsultation,
-                enabled = patient.hasNurse,
+                enabled = patient.hasNurse && !hasActiveConsultation,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Crimson,
+                    containerColor = if (hasActiveConsultation) SuccessGreen else Crimson,
                     disabledContainerColor = Color.LightGray
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
-                    text = if (patient.hasNurse) "Escribir Consulta" else "Espera la asignación",
+                    text = when {
+                        !patient.hasNurse -> "Espera la asignación"
+                        hasActiveConsultation -> "✅ Consulta activa"
+                        else -> "Escribir Consulta"
+                    },
                     color = Color.White
+                )
+            }
+
+            // ✅ MENSAJE INFORMATIVO SI TIENE CONSULTA ACTIVA
+            if (hasActiveConsultation) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Ya tienes una consulta activa para este paciente",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SuccessGreen,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }

@@ -27,10 +27,8 @@ data class ConsultationsUiState(
     val consultations: List<Consultation> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    /** Id de la consulta recién creada; la pantalla lo consume para navegar al chat. */
     val createdConsultationId: String? = null
 ) {
-    /** Hay al menos un hijo con enfermera asignada → se habilita "Nueva Consulta". */
     val hasNurse: Boolean get() = patients.any { it.hasNurse }
 }
 
@@ -38,7 +36,8 @@ class ConsultationsViewModel(application: Application) : AndroidViewModel(applic
 
     private val tokenManager = TokenManager.getInstance(application)
     private val repository: ConsultationRepository = ConsultationRepositoryImpl(
-        FerovaApiClient.create(ConsultationApiService::class.java, application)
+        context = application,
+        service = FerovaApiClient.create(ConsultationApiService::class.java, application)
     )
 
     private val _uiState = MutableStateFlow(ConsultationsUiState())
@@ -48,16 +47,31 @@ class ConsultationsViewModel(application: Application) : AndroidViewModel(applic
         loadData()
     }
 
-    // ── Carga inicial ─────────────────────────────────────────────────────────
-
     fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val patients = repository.getPatientsWithNurse()
+                Log.d(TAG, "loadData: patients size=${patients.size}")
+
                 val consultations = repository.getMotherConsultations()
-                _uiState.update {
-                    it.copy(patients = patients, consultations = consultations, isLoading = false)
+                Log.d(TAG, "loadData: consultations size=${consultations.size}")
+
+                _uiState.update { state ->
+                    val mergedConsultations = consultations.map { newConsultation ->
+                        val existing = state.consultations.firstOrNull { it.id == newConsultation.id }
+                        if (existing != null) {
+                            newConsultation.copy(messages = existing.messages)
+                        } else {
+                            newConsultation
+                        }
+                    }
+
+                    state.copy(
+                        patients = patients,
+                        consultations = mergedConsultations,
+                        isLoading = false
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "loadData error", e)
@@ -67,8 +81,6 @@ class ConsultationsViewModel(application: Application) : AndroidViewModel(applic
             }
         }
     }
-
-    // ── Consultas ─────────────────────────────────────────────────────────────
 
     fun getPatientById(patientId: String): PatientWithNurse? =
         _uiState.value.patients.firstOrNull { it.patientId == patientId }
@@ -85,9 +97,10 @@ class ConsultationsViewModel(application: Application) : AndroidViewModel(applic
             try {
                 val consultation = repository.startConsultation(patientId, firstMessage)
                 _uiState.update { state ->
-                    val merged = state.consultations.filter { it.id != consultation.id } + consultation
+                    val merged = (state.consultations + consultation).distinctBy { it.id }
                     state.copy(consultations = merged, createdConsultationId = consultation.id)
                 }
+                loadData()
             } catch (e: Exception) {
                 Log.e(TAG, "createConsultation error", e)
                 _uiState.update { it.copy(error = e.message ?: "No se pudo iniciar la consulta") }
@@ -95,35 +108,61 @@ class ConsultationsViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    /** La pantalla llama esto tras navegar, para no repetir la navegación. */
     fun consumeCreatedConsultation() {
         _uiState.update { it.copy(createdConsultationId = null) }
     }
 
-    // ── Mensajes ──────────────────────────────────────────────────────────────
-
     fun sendMessage(consultationId: String, text: String) {
         if (text.isBlank()) return
 
-        // Optimista: lo agregamos local y luego sincronizamos con el backend.
+        val consultation = _uiState.value.consultations.firstOrNull { it.id == consultationId }
+        if (consultation == null) {
+            Log.e(TAG, "sendMessage: Consulta no encontrada")
+            _uiState.update { it.copy(error = "Consulta no encontrada") }
+            return
+        }
+
+        if (!consultation.isOpen) {
+            Log.e(TAG, "sendMessage: Consulta cerrada")
+            _uiState.update { it.copy(error = "Esta consulta está cerrada") }
+            return
+        }
+
         val optimistic = Message(
             id = UUID.randomUUID().toString(),
             text = text.trim(),
             isFromNurse = false,
             time = currentTime()
         )
+
         _uiState.update { state ->
             state.copy(consultations = state.consultations.map { c ->
-                if (c.id == consultationId) c.copy(messages = c.messages + optimistic) else c
+                if (c.id == consultationId) {
+                    c.copy(messages = c.messages + optimistic)
+                } else c
             })
         }
 
         viewModelScope.launch {
             try {
+                Log.d(TAG, "sendMessage: Enviando mensaje a consulta $consultationId")
                 repository.sendMessage(consultationId, text.trim())
+                Log.d(TAG, "sendMessage: Mensaje enviado correctamente")
                 loadChat(consultationId)
+                loadData()
             } catch (e: Exception) {
                 Log.e(TAG, "sendMessage error", e)
+                _uiState.update { state ->
+                    state.copy(consultations = state.consultations.map { c ->
+                        if (c.id == consultationId) {
+                            val messagesWithoutOptimistic = c.messages.filter { it.id != optimistic.id }
+                            c.copy(messages = messagesWithoutOptimistic)
+                        } else c
+                    })
+                }
+                _uiState.update {
+                    it.copy(error = e.message ?: "No se pudo enviar el mensaje")
+                }
             }
         }
     }
@@ -132,19 +171,31 @@ class ConsultationsViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             try {
                 val messages = repository.getChat(consultationId)
-                if (messages.isEmpty()) return@launch
+                Log.d(TAG, "loadChat: messages size=${messages.size}")
+
                 _uiState.update { state ->
-                    state.copy(consultations = state.consultations.map { c ->
-                        if (c.id == consultationId) c.copy(messages = messages) else c
-                    })
+                    val existingConsultation = state.consultations.firstOrNull { it.id == consultationId }
+
+                    if (existingConsultation != null) {
+                        // ✅ Si la consulta existe, SOLO actualizar mensajes
+                        state.copy(
+                            consultations = state.consultations.map { c ->
+                                if (c.id == consultationId) {
+                                    c.copy(messages = messages)
+                                } else c
+                            }
+                        )
+                    } else {
+                        // ✅ Si no existe en el estado, mantener estado (NO mostrar diálogo)
+                        state
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "loadChat error", e)
+                // ✅ NO ELIMINAR LA CONSULTA EN CASO DE ERROR
             }
         }
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun currentTime(): String {
         val now = LocalTime.now()

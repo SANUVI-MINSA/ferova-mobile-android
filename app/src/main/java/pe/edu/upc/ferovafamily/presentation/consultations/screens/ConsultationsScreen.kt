@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import pe.edu.upc.ferovafamily.presentation.consultations.ConsultationsViewModel
 import pe.edu.upc.ferovafamily.presentation.consultations.components.ChildCard
 import androidx.compose.material.icons.filled.LocationOn
@@ -33,6 +35,19 @@ fun ConsultationsScreen(
     viewModel: ConsultationsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    // ✅ REFRESCAR DATOS CADA VEZ QUE SE ENTRA A LA PANTALLA
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
+    // ✅ POLLING: Actualizar cada 5 segundos para detectar cambios
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(3000)
+            viewModel.loadData()
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -61,12 +76,18 @@ fun ConsultationsScreen(
                 Spacer(Modifier.height(16.dp))
 
                 state.patients.forEach { patient ->
+                    val hasActiveConsultation = viewModel.getOpenConsultationFor(patient.patientId) != null
+
                     ChildCard(
                         patient = patient,
+                        hasActiveConsultation = hasActiveConsultation,
                         onWriteConsultation = {
                             val existing = viewModel.getOpenConsultationFor(patient.patientId)
-                            if (existing != null) onOpenChat(existing.id)
-                            else onWriteForChild(patient.patientId)
+                            if (existing != null) {
+                                onOpenChat(existing.id)
+                            } else {
+                                onWriteForChild(patient.patientId)
+                            }
                         }
                     )
                 }
@@ -96,7 +117,6 @@ private fun EmptyNurseState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Ícono grande de chat con búsqueda (placeholder)
         Box(
             modifier = Modifier
                 .size(140.dp)
