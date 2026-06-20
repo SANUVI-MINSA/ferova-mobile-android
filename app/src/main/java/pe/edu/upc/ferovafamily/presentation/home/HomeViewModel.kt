@@ -12,12 +12,15 @@ import kotlinx.coroutines.launch
 import pe.edu.upc.ferovafamily.data.local.TokenManager
 import pe.edu.upc.ferovafamily.data.remote.FerovaApiClient
 import pe.edu.upc.ferovafamily.data.remote.api.AchievementApiService
+import pe.edu.upc.ferovafamily.data.remote.api.NutritionalDiaryApiService
 import pe.edu.upc.ferovafamily.data.remote.api.PatientApiService
 import pe.edu.upc.ferovafamily.data.remote.api.TreatmentApiService
 import pe.edu.upc.ferovafamily.data.repository.AchievementRepositoryImpl
+import pe.edu.upc.ferovafamily.data.repository.NutritionalDiaryRepositoryImpl
 import pe.edu.upc.ferovafamily.data.repository.TreatmentRepositoryImpl
 import pe.edu.upc.ferovafamily.domain.model.TodayDose
 import pe.edu.upc.ferovafamily.domain.repository.AchievementRepository
+import pe.edu.upc.ferovafamily.domain.repository.NutritionalDiaryRepository
 import pe.edu.upc.ferovafamily.domain.repository.TreatmentRepository
 
 data class ChildInfo(
@@ -36,7 +39,9 @@ data class HomeUiState(
     val confirmDoseSuccess: Boolean = false,
     //  CAMPOS PARA LOGROS
     val currentStreak: Int = 0,
-    val totalPoints: Int = 0
+    val totalPoints: Int = 0,
+    //  CAMPO PARA NUTRICIÓN
+    val ironAbsorbedToday: Double = 0.0
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -48,6 +53,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val treatmentRepository: TreatmentRepository = TreatmentRepositoryImpl(
         FerovaApiClient.create(TreatmentApiService::class.java, application)
+    )
+    private val nutritionRepository: NutritionalDiaryRepository = NutritionalDiaryRepositoryImpl(
+        FerovaApiClient.create(NutritionalDiaryApiService::class.java, application)
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -76,6 +84,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     selectedChildId?.let {
                         loadTodayDose(it)
                         loadAchievements(it)
+                        loadIron(it)
                     }
                 } else {
                     _uiState.update { it.copy(isLoading = false) }
@@ -95,6 +104,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         tokenManager.selectedChildId = childId
         loadTodayDose(childId)
         loadAchievements(childId)
+        loadIron(childId)
+    }
+
+    // Cargar hierro absorbido hoy del paciente seleccionado
+    private fun loadIron(patientId: String) {
+        viewModelScope.launch {
+            try {
+                val diary = nutritionRepository.getTodayDiary(patientId)
+                _uiState.update { it.copy(ironAbsorbedToday = diary.totalIronAbsorbed) }
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error loading iron", e)
+                _uiState.update { it.copy(ironAbsorbedToday = 0.0) }
+            }
+        }
     }
 
     private fun loadTodayDose(patientId: String) {

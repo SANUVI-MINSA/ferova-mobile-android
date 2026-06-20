@@ -167,7 +167,10 @@ fun HomeScreen(
                     totalPoints = uiState.totalPoints,
                     modifier = Modifier.weight(1f)
                 )
-                NutritionMiniCard(modifier = Modifier.weight(1f))
+                NutritionMiniCard(
+                    ironAbsorbed = uiState.ironAbsorbedToday,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(Modifier.height(20.dp))
@@ -180,7 +183,7 @@ fun HomeScreen(
                 icon = Icons.Default.Restaurant,
                 title = "Nueva entrada de alimento",
                 subtitle = "Registra lo que comiste hoy",
-                enabled = false,
+                enabled = true,
                 onClick = onNavigateToNewMeal
             )
             Spacer(Modifier.height(10.dp))
@@ -639,7 +642,7 @@ private fun AchievementMiniCard(
 }
 
 @Composable
-private fun NutritionMiniCard(modifier: Modifier = Modifier) {
+private fun NutritionMiniCard(ironAbsorbed: Double, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(
             text = "Nutricion",
@@ -664,7 +667,7 @@ private fun NutritionMiniCard(modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "1.36",
+                        text = String.format(java.util.Locale.US, "%.2f", ironAbsorbed),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.DarkGray

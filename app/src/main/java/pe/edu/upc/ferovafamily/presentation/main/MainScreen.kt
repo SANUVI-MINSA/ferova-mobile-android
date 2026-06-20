@@ -49,7 +49,6 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryRo
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NewNutritionalMealScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalDiaryScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens.NutritionalHistoryScreen
-import pe.edu.upc.ferovafamily.presentation.notifications.NotificationsScreen
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
 import pe.edu.upc.ferovafamily.presentation.patient_management.PatientManagementRoutes
 import pe.edu.upc.ferovafamily.presentation.patient_management.screens.CreatePatientScreen
@@ -126,7 +125,12 @@ fun MainScreen(
                         navController.navigate(ProgressRoutes.PROGRESS)
                     },
                     onNavigateToNewMeal = {
-                        navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
+                        // Llevar al tab "Diario" (donde están los alimentos/recetas)
+                        navController.navigate(MainRoutes.DIARY) {
+                            popUpTo(MainRoutes.HOME) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     },
                     onNavigateToCreatePatient = {
                         navController.navigate(PatientManagementRoutes.CREATE_PATIENT)
