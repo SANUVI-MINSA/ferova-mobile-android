@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
@@ -23,6 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,19 +40,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pe.edu.upc.ferovafamily.R
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodEntry
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodItem
+import pe.edu.upc.ferovafamily.domain.model.nutrition.DaySummary
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
 import pe.edu.upc.ferovafamily.presentation.theme.Crimson
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MealEntryHistory(
-    patientName: String,
-    foodEntries: List<FoodEntry>,
-    foodItems: List<FoodItem>,
+    patientId: String,
+    viewModel: NutritionalDiaryViewModel,
     modifier: Modifier = Modifier
 ) {
     var startDate by remember { mutableStateOf("") }
@@ -57,16 +59,28 @@ fun MealEntryHistory(
     var showEndPicker by remember { mutableStateOf(false) }
     var dateError by remember { mutableStateOf(false) }
 
-    val patientEntries = foodEntries.filter { it.patientName == patientName }
+    // ════════════════════════════════════════════════════════════════════════
+    // ESTADOS DEL VIEWMODEL
+    // ════════════════════════════════════════════════════════════════════════
 
-    val filteredByDate = patientEntries.filter { entry ->
-        if (startDate.isEmpty() || endDate.isEmpty()) true
-        else entry.registeredAt in startDate..endDate
+    val nutritionalHistory by viewModel.nutritionalHistory.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // ════════════════════════════════════════════════════════════════════════
+    // EFECTOS
+    // ════════════════════════════════════════════════════════════════════════
+
+    // Recargar historial cuando cambian las fechas
+    LaunchedEffect(startDate, endDate) {
+        if (startDate.isNotEmpty() && endDate.isNotEmpty() && !dateError) {
+            viewModel.loadNutritionalHistory(patientId, startDate, endDate)
+        } else if (startDate.isEmpty() && endDate.isEmpty()) {
+            viewModel.loadNutritionalHistory(patientId)
+        }
     }
 
-    val groupedByDate = filteredByDate
-        .groupBy { it.registeredAt }
-        .toSortedMap(reverseOrder())
+    val daySummaries = nutritionalHistory?.days ?: emptyList()
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
@@ -126,19 +140,71 @@ fun MealEntryHistory(
             }
         }
 
-        // Lista de cards
-        items(groupedByDate.entries.toList()) { (date, entries) ->
-            val inhibitorCount = entries.count { entry ->
-                foodItems.find { it.id == entry.foodItemId }?.isInhibitor == true
-            }
-            val totalIron = entries.sumOf { it.ironContributed }
+        // ════════════════════════════════════════════════════════════════════
+        // MOSTRAR ESTADO
+        // ════════════════════════════════════════════════════════════════════
 
-            DayHistoryCard(
-                date = date,
-                totalIron = totalIron,
-                inhibitorCount = inhibitorCount,
-                foodCount = entries.size
-            )
+        when {
+            isLoading -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF8B0000)
+                        )
+                    }
+                }
+            }
+
+            error != null -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                            .background(Color(0xFFFFEBEE), RoundedCornerShape(8.dp))
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "❌ ${error ?: "Error desconocido"}",
+                            fontSize = 14.sp,
+                            color = Color(0xFFB71C1C),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            daySummaries.isEmpty() -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Sin registros en este período",
+                            fontSize = 14.sp,
+                            color = Color(0xFF888888)
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                // Lista de cards con el historial
+                items(daySummaries) { daySummary ->
+                    DayHistoryCard(
+                        daySummary = daySummary
+                    )
+                }
+            }
         }
     }
 
@@ -204,7 +270,8 @@ fun MealEntryHistory(
                 }
             },
         ) {
-            DatePicker(state = state,
+            DatePicker(
+                state = state,
                 colors = DatePickerDefaults.colors(
                     selectedDayContainerColor = Crimson,
                     selectedDayContentColor = Color.White,
@@ -248,10 +315,7 @@ fun DateInputChip(
 
 @Composable
 fun DayHistoryCard(
-    date: String,
-    totalIron: Double,
-    inhibitorCount: Int,
-    foodCount: Int,
+    daySummary: DaySummary,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -270,13 +334,13 @@ fun DayHistoryCard(
             // Fecha e hierro
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = yyyyMMddToReadable(date),
+                    text = daySummary.displayDate,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A1A)
                 )
                 Text(
-                    text = "${String.format(Locale.US, "%.1f", totalIron)} mg de hierro absorbido",
+                    text = "${String.format(Locale.US, "%.1f", daySummary.totalIronAbsorbed)} mg de hierro absorbido",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF8B0000)
@@ -292,31 +356,37 @@ fun DayHistoryCard(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .background(
-                            if (inhibitorCount > 0) Color(0xFFFFE7E7) else Color(0xFFF0F0F0)
+                            if (daySummary.hasInhibitor) Color(0xFFFFE7E7) else Color(0xFFF0F0F0)
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        painter = painterResource(if (inhibitorCount > 0) R.drawable.warning
-                        else R.drawable.check_circle),
+                        painter = painterResource(
+                            if (daySummary.hasInhibitor) R.drawable.warning
+                            else R.drawable.check_circle
+                        ),
                         contentDescription = null,
-                        tint = if (inhibitorCount > 0) Color(0xFF8B0000) else Color(0xFF888888),
+                        tint = if (daySummary.hasInhibitor) Color(0xFF8B0000) else Color(0xFF888888),
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
-                        text = when (inhibitorCount) {
+                        text = when (daySummary.inhibitorCount) {
                             0 -> "Sin inhibidores"
                             1 -> "1 inhibidor"
-                            else -> "$inhibitorCount inhibidores"
+                            else -> "${daySummary.inhibitorCount} inhibidores"
                         },
                         fontSize = 11.sp,
-                        color = if (inhibitorCount > 0) Color(0xFF8B0000) else Color(0xFF888888)
+                        color = if (daySummary.hasInhibitor) Color(0xFF8B0000) else Color(0xFF888888)
                     )
                 }
                 Text(
-                    text = "$foodCount alimentos",
+                    text = when (daySummary.totalFoodEntries) {
+                        0 -> "Sin alimentos"
+                        1 -> "1 alimento"
+                        else -> "${daySummary.totalFoodEntries} alimentos"
+                    },
                     fontSize = 12.sp,
                     color = Color(0xFF888888)
                 )
@@ -325,7 +395,10 @@ fun DayHistoryCard(
     }
 }
 
-// Helpers
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
 fun millisToYYYYMMDD(millis: Long): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     return sdf.format(Date(millis))

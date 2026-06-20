@@ -16,8 +16,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,12 +32,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodItem
+import pe.edu.upc.ferovafamily.domain.model.nutrition.FoodItem
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
 
 @Composable
 fun MealCatalog(
     modifier: Modifier = Modifier,
-    foodItems: List<FoodItem>,
+    viewModel: NutritionalDiaryViewModel,
     onMealClick: (FoodItem) -> Unit = {},
 ) {
     val categories = listOf(
@@ -50,7 +54,24 @@ fun MealCatalog(
 
     var selectedCategory by remember { mutableStateOf("MEAT") }
 
-    val filteredItems = foodItems.filter { it.category == selectedCategory }
+    // ════════════════════════════════════════════════════════════════════════
+    // ESTADOS DEL VIEWMODEL
+    // ════════════════════════════════════════════════════════════════════════
+
+    val foodsByCategory by viewModel.foodsByCategory.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // ════════════════════════════════════════════════════════════════════════
+    // EFECTOS
+    // ════════════════════════════════════════════════════════════════════════
+
+    // Cargar alimentos cuando cambia la categoría
+    LaunchedEffect(selectedCategory) {
+        viewModel.loadFoodsByCategory(selectedCategory)
+    }
+
+    val filteredItems = foodsByCategory?.items ?: emptyList()
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -78,15 +99,73 @@ fun MealCatalog(
             }
         }
 
-        // Lista de food items
-        Column(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        // ════════════════════════════════════════════════════════════════════
+        // MOSTRAR ESTADO
+        // ════════════════════════════════════════════════════════════════════
 
-        ) {
-            filteredItems.forEach { foodItem ->
-                FoodItemCard(foodItem = foodItem,
-                    onClickCard = onMealClick)
+        when {
+            isLoading -> {
+                // Mostrar loader
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color(0xFF8B0000)
+                    )
+                }
+            }
+
+            error != null -> {
+                // Mostrar error
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                        .background(Color(0xFFFFEBEE), RoundedCornerShape(8.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = " ${error ?: "Error desconocido"}",
+                        fontSize = 14.sp,
+                        color = Color(0xFFB71C1C),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            filteredItems.isEmpty() -> {
+                // Sin resultados
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Sin alimentos disponibles",
+                        fontSize = 14.sp,
+                        color = Color(0xFF888888)
+                    )
+                }
+            }
+
+            else -> {
+                // Lista de food items
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    filteredItems.forEach { foodItem ->
+                        FoodItemCard(
+                            foodItem = foodItem,
+                            onClickCard = onMealClick
+                        )
+                    }
+                }
             }
         }
     }
@@ -123,14 +202,23 @@ fun FoodItemCard(
     modifier: Modifier = Modifier,
     onClickCard: (FoodItem) -> Unit = {}
 ) {
+    // ════════════════════════════════════════════════════════════════════════
+    // COLOR DE ALERTA SI ES INHIBIDOR
+    // ════════════════════════════════════════════════════════════════════════
+
+    val cardBgColor = if (foodItem.isInhibitor) Color(0xFFFFF3E0) else Color.White
+    val borderColor = if (foodItem.isInhibitor) Color(0xFFFF9800) else Color.White
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClickCard(foodItem) },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = cardBgColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = if (foodItem.isInhibitor)
+            CardDefaults.outlinedCardBorder()
+        else null
     ) {
         Row(
             modifier = Modifier
@@ -139,13 +227,28 @@ fun FoodItemCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = foodItem.name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF8B0000),
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = foodItem.name,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF8B0000)
+                )
+
+                // ════════════════════════════════════════════════════════════
+                // ADVERTENCIA SI ES INHIBIDOR
+                // ════════════════════════════════════════════════════════════
+
+                if (foodItem.isInhibitor) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = " Reduce absorción de hierro",
+                        fontSize = 11.sp,
+                        color = Color(0xFFFF9800),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
 
             Column(horizontalAlignment = Alignment.End) {
                 // Badge Hemo / No-Hemo
@@ -157,7 +260,7 @@ fun FoodItemCard(
                         .padding(horizontal = 10.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = foodItem.nutrientContent.second,
+                        text = if (foodItem.ironType == "hemo") "Hemo" else "No-Hemo",
                         fontSize = 11.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Medium
@@ -167,7 +270,7 @@ fun FoodItemCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "${foodItem.nutrientContent.first}.0 mg",
+                    text = "${foodItem.ironMgPer100g} mg",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Normal,
                     color = Color(0xFF1A1A1A)
