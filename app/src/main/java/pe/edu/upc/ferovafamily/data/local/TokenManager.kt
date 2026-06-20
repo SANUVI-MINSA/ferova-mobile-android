@@ -3,10 +3,6 @@ package pe.edu.upc.ferovafamily.data.local
 import android.content.Context
 import android.content.SharedPreferences
 
-/**
- * Almacena el JWT y los datos básicos del usuario en SharedPreferences.
- * Úsalo como singleton vía TokenManager.getInstance(context).
- */
 class TokenManager private constructor(context: Context) {
 
     var selectedChildId: String?
@@ -14,6 +10,7 @@ class TokenManager private constructor(context: Context) {
         set(value) {
             prefs.edit().putString(KEY_SELECTED_CHILD_ID, value).apply()
         }
+
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -42,6 +39,11 @@ class TokenManager private constructor(context: Context) {
     var userEmail: String?
         get() = prefs.getString(KEY_USER_EMAIL, null)
         set(value) = prefs.edit().putString(KEY_USER_EMAIL, value).apply()
+
+    // ✅ AGREGAR motherId
+    var motherId: String?
+        get() = prefs.getString(KEY_MOTHER_ID, null)
+        set(value) = prefs.edit().putString(KEY_MOTHER_ID, value).apply()
 
     val fullName: String
         get() = listOfNotNull(userName, userLastName).joinToString(" ").ifBlank { "Usuario" }
@@ -77,6 +79,7 @@ class TokenManager private constructor(context: Context) {
         private const val KEY_RECOVERY_EMAIL = "recovery_email"
         private const val KEY_RECOVERY_CODE = "recovery_code"
         private const val KEY_SELECTED_CHILD_ID = "selected_child_id"
+        private const val KEY_MOTHER_ID = "mother_id"  // ✅ NUEVA KEY
 
         @Volatile
         private var INSTANCE: TokenManager? = null

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -17,8 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import pe.edu.upc.ferovafamily.presentation.consultations.ConsultationsViewModel
-import pe.edu.upc.ferovafamily.presentation.consultations.model.Consultation
+import pe.edu.upc.ferovafamily.domain.model.communication.Consultation
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -31,7 +33,17 @@ fun MyConsultationsScreen(
     viewModel: ConsultationsViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    val openConsultations = state.consultations.filter { it.isOpen }
+
+    // ✅ Filtrar solo consultas abiertas
+    val consultations = state.consultations.filter { it.isOpen }
+
+    // ✅ POLLING: Actualizar cada 3 segundos para detectar cambios
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(3000)
+            viewModel.loadData()
+        }
+    }
 
     Scaffold(
         containerColor = Cream,
@@ -51,7 +63,7 @@ fun MyConsultationsScreen(
             )
         }
     ) { padding ->
-        if (openConsultations.isEmpty()) {
+        if (consultations.isEmpty()) {
             EmptyConsultationsState(
                 onBack = onBack,
                 modifier = Modifier
@@ -66,7 +78,7 @@ fun MyConsultationsScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(openConsultations, key = { it.id }) { consultation ->
+                items(consultations, key = { it.id }) { consultation ->
                     ConsultationListItem(
                         consultation = consultation,
                         onClick = { onOpenChat(consultation.id) }
@@ -95,14 +107,15 @@ private fun ConsultationListItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = consultation.childName,
+                    text = consultation.patientName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                Surface(color = Crimson, shape = RoundedCornerShape(12.dp)) {
+                val badgeColor = if (consultation.isOpen) Crimson else Color.Gray
+                Surface(color = badgeColor, shape = RoundedCornerShape(12.dp)) {
                     Text(
-                        text = "ABIERTA",
+                        text = if (consultation.isOpen) "ABIERTA" else "CERRADA",
                         color = Color.White,
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)

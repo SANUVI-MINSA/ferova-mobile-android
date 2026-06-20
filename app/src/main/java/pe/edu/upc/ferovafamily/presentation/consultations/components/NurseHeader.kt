@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import pe.edu.upc.ferovafamily.presentation.consultations.model.Nurse
+import pe.edu.upc.ferovafamily.domain.model.communication.Nurse
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)

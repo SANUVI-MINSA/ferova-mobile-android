@@ -13,15 +13,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import pe.edu.upc.ferovafamily.presentation.consultations.model.Child
+import pe.edu.upc.ferovafamily.domain.model.communication.PatientWithNurse
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
+private val SuccessGreen = Color(0xFF4CAF50)
 
 @Composable
 fun ChildCard(
-    child: Child,
+    patient: PatientWithNurse,
     onWriteConsultation: () -> Unit,
+    hasActiveConsultation: Boolean = false,  // ✅ NUEVO PARÁMETRO
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -49,25 +51,49 @@ fun ChildCard(
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = child.name,
+                        text = patient.patientName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = child.description,
+                        text = patient.nurse?.name ?: "Sin enfermera asignada",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = if (patient.hasNurse) Color.Gray else Crimson
                     )
                 }
             }
             Spacer(Modifier.height(12.dp))
+
+            // ✅ BOTÓN CON ESTADO DE CONSULTA ACTIVA
             Button(
                 onClick = onWriteConsultation,
+                enabled = patient.hasNurse && !hasActiveConsultation,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Crimson),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (hasActiveConsultation) SuccessGreen else Crimson,
+                    disabledContainerColor = Color.LightGray
+                ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Escribir Consulta", color = Color.White)
+                Text(
+                    text = when {
+                        !patient.hasNurse -> "Espera la asignación"
+                        hasActiveConsultation -> "✅ Consulta activa"
+                        else -> "Escribir Consulta"
+                    },
+                    color = Color.White
+                )
+            }
+
+            // ✅ MENSAJE INFORMATIVO SI TIENE CONSULTA ACTIVA
+            if (hasActiveConsultation) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Ya tienes una consulta activa para este paciente",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SuccessGreen,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
