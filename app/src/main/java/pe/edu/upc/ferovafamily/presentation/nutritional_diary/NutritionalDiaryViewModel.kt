@@ -262,6 +262,14 @@ class NutritionalDiaryViewModel(
     }
 
     /**
+     * Limpia el resultado del último registro (evita que el diálogo se cierre
+     * solo al reabrirlo cuando el ViewModel es compartido entre pantallas).
+     */
+    fun clearRegisterResult() {
+        _registerFoodEntryResult.value = null
+    }
+
+    /**
      * Limpia los errores
      */
     fun clearError() {

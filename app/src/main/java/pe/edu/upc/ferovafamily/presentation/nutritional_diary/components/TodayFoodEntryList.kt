@@ -45,7 +45,8 @@ import java.util.Locale
 fun TodayFoodEntriesList(
     patientId: String,
     viewModel: NutritionalDiaryViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    patientName: String? = null
 ) {
     // ════════════════════════════════════════════════════════════════════════
     // ESTADOS DEL VIEWMODEL
@@ -79,12 +80,23 @@ fun TodayFoodEntriesList(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Alimentos de Hoy",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF8B0000)
-            )
+            Column {
+                Text(
+                    text = "Alimentos de Hoy",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF8B0000)
+                )
+                // Indica de qué niño es este diario
+                if (!patientName.isNullOrBlank()) {
+                    Text(
+                        text = "de $patientName",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF888888)
+                    )
+                }
+            }
 
             if (!isLoading) {
                 Box(
@@ -164,7 +176,7 @@ fun TodayFoodEntriesList(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     todayEntries.forEach { entry ->
-                        FoodEntryCard(foodEntry = entry)
+                        FoodEntryCard(foodEntry = entry, patientName = patientName)
                     }
                 }
             }
@@ -175,7 +187,8 @@ fun TodayFoodEntriesList(
 @Composable
 fun FoodEntryCard(
     foodEntry: FoodEntry,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    patientName: String? = null
 ) {
     // ════════════════════════════════════════════════════════════════════════
     // DETERMINAR SI ES INHIBIDOR Y COLOR DE FONDO
@@ -221,6 +234,24 @@ fun FoodEntryCard(
                             color = Color(0xFF8B0000),
                             fontWeight = FontWeight.Medium
                         )
+                        // Chip: indica de qué niño es esta comida
+                        if (!patientName.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFFDECEC))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "👶 $patientName",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF8B0000)
+                                )
+                            }
+                        }
                     }
 
                     // ════════════════════════════════════════════════════════

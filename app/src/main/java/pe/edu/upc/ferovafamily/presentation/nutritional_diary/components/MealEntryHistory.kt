@@ -67,19 +67,6 @@ fun MealEntryHistory(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    // ════════════════════════════════════════════════════════════════════════
-    // EFECTOS
-    // ════════════════════════════════════════════════════════════════════════
-
-    // Recargar historial cuando cambian las fechas
-    LaunchedEffect(startDate, endDate) {
-        if (startDate.isNotEmpty() && endDate.isNotEmpty() && !dateError) {
-            viewModel.loadNutritionalHistory(patientId, startDate, endDate)
-        } else if (startDate.isEmpty() && endDate.isEmpty()) {
-            viewModel.loadNutritionalHistory(patientId)
-        }
-    }
-
     val daySummaries = nutritionalHistory?.days ?: emptyList()
 
     LazyColumn(

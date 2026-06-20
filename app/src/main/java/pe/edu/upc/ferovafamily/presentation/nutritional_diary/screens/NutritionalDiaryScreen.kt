@@ -42,20 +42,19 @@ fun NutritionalDiaryScreen(
     // ESTADOS LOCALES
     // ════════════════════════════════════════════════════════════════════════
 
-    val selectedPatientId = patientId
+    // El niño seleccionado proviene del estado del ViewModel (compartido).
+    // Si aún no hay selección, usamos el patientId recibido por parámetro.
+    val selectedPatientId = uiState.selectedPatient?.id ?: patientId
+    val selectedPatientName = uiState.selectedPatient?.name
 
     // ════════════════════════════════════════════════════════════════════════
     // EFECTOS
     // ════════════════════════════════════════════════════════════════════════
 
-    // Cargar diario de hoy cuando se monta o cambia el paciente
+    // Recargar el diario cada vez que cambia el niño seleccionado
     LaunchedEffect(selectedPatientId) {
         if (selectedPatientId.isNotBlank()) {
-            android.util.Log.d(
-                "NUTRITION_DEBUG",
-                "patientId enviado = $selectedPatientId"
-            )
-
+            android.util.Log.d("NUTRITION_DEBUG", "patientId seleccionado = $selectedPatientId")
             viewModel.loadTodayDiary(selectedPatientId)
         }
     }
@@ -136,17 +135,6 @@ fun NutritionalDiaryScreen(
                                 viewModel.selectPatient(patient.id)
                             }
                         )
-                        Text("Cantidad pacientes: ${uiState.patients.size}")
-
-                        Text(
-                            "Seleccionado: ${
-                                uiState.selectedPatient?.name ?: "NINGUNO"
-                            }"
-                        )
-/*
-                        uiState.patients.forEach {
-                            Text("Paciente -> ${it.name}")
-                        }*/
                     }
                 }
 
@@ -158,6 +146,7 @@ fun NutritionalDiaryScreen(
 
                 TodayFoodEntriesList(
                     patientId = selectedPatientId,
+                    patientName = selectedPatientName,
                     viewModel = viewModel
                 )
 

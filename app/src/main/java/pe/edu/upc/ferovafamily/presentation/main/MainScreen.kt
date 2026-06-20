@@ -158,6 +158,7 @@ fun MainScreen(
 
                 NutritionalDiaryScreen(
                     patientId = selectedPatientId,
+                    viewModel = nutritionalDiaryViewModel,   // instancia compartida
                     onNewFoodEntry = {
                         navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
@@ -333,6 +334,7 @@ fun MainScreen(
 
                 NewNutritionalMealScreen(
                     patientId = selectedPatientId,
+                    viewModel = nutritionalDiaryViewModel,   // misma instancia compartida
                     onBack = { navController.popBackStack() },
                     onRegisterSuccess = {
                         navController.popBackStack()

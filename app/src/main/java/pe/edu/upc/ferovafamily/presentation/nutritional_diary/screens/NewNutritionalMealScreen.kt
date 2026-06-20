@@ -250,6 +250,10 @@ fun NewNutritionalMealScreen(
             // ════════════════════════════════════════════════════════════════
 
             selectedMeal?.let { item ->
+                // Limpiar resultado previo al abrir el diálogo, para que no se cierre solo
+                LaunchedEffect(item.foodItemId) {
+                    viewModel.clearRegisterResult()
+                }
                 RegisterMealDialog(
                     foodItem = item,
                     patientId = patientId,
@@ -258,6 +262,7 @@ fun NewNutritionalMealScreen(
                         selectedMeal = null
                         viewModel.clearWarning()
                         viewModel.clearError()
+                        viewModel.clearRegisterResult()
                     },
                     onSuccess = {
                         selectedMeal = null
