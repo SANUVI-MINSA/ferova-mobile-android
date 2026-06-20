@@ -1,10 +1,13 @@
 package pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -13,38 +16,88 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import pe.edu.upc.ferovafamily.R
+import pe.edu.upc.ferovafamily.domain.model.nutrition.FoodItem
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.FoodItemCard
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.MealCatalog
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.MealSearch
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.RegisterMealDialog
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodDatabase
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodItem
 import pe.edu.upc.ferovafamily.presentation.theme.CrimsonDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewNutritionalMealScreen(
+    patientId: String,
     onBack: () -> Unit = {},
-    onRegisterMeal: () -> Unit = {},
+    onRegisterSuccess: () -> Unit = {},
+    viewModel: NutritionalDiaryViewModel = viewModel()
 ) {
+    // ════════════════════════════════════════════════════════════════════════
+    // ESTADOS DEL VIEWMODEL
+    // ════════════════════════════════════════════════════════════════════════
 
-    val selectedMeal = remember {
-        mutableStateOf<FoodItem?>(null)
+    val searchFoodResult by viewModel.searchFoodResult.collectAsState()
+    val foodsByCategory by viewModel.foodsByCategory.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val warning by viewModel.warning.collectAsState()
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ESTADOS LOCALES
+    // ════════════════════════════════════════════════════════════════════════
+
+    var selectedMeal by remember { mutableStateOf<FoodItem?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // EFECTO: CARGAR CATEGORÍA POR DEFECTO AL MONTAR
+    // ════════════════════════════════════════════════════════════════════════
+
+    LaunchedEffect(Unit) {
+        // Cargar categoría MEAT por defecto
+        viewModel.loadFoodsByCategory("MEAT")
     }
-    val searchedMeal = remember {
-        mutableStateOf("")
+
+    // ════════════════════════════════════════════════════════════════════════
+    // MANEJADOR DE BÚSQUEDA
+    // ════════════════════════════════════════════════════════════════════════
+
+    val handleSearch = { query: String ->
+        searchQuery = query
+        if (query.isEmpty()) {
+            // Si se limpia la búsqueda, cargar categoría por defecto
+            viewModel.loadFoodsByCategory("MEAT")
+        } else if (query.length >= 2) {
+            // Solo buscar si hay 2+ caracteres
+            viewModel.searchFoods(query)
+        }
     }
-    val foodItems = FoodDatabase.foodItems
 
+    // ════════════════════════════════════════════════════════════════════════
+    // OBTENER ALIMENTOS SEGÚN BÚSQUEDA O CATEGORÍA
+    // ════════════════════════════════════════════════════════════════════════
 
+    val foodItemsToDisplay = if (searchQuery.isEmpty()) {
+        // Mostrar por categoría (desde foodsByCategory)
+        foodsByCategory?.items ?: emptyList()
+    } else {
+        // Mostrar resultados de búsqueda
+        searchFoodResult?.items ?: emptyList()
+    }
 
     Scaffold(
         containerColor = Color(0xFFFFF8F6),
@@ -59,7 +112,8 @@ fun NewNutritionalMealScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painter = painterResource(R.drawable.arrow_back),
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
                             contentDescription = "Volver",
                             tint = CrimsonDark
                         )
@@ -69,42 +123,153 @@ fun NewNutritionalMealScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(paddingValues)
-        ) {
-            Spacer(Modifier.height(16.dp))
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(paddingValues)
+            ) {
+                Spacer(Modifier.height(16.dp))
 
-            MealSearch(
-                searchedMeal.value,
-                {searchedMeal.value = it}
-            )
+                // ════════════════════════════════════════════════════════════
+                // BARRA DE BÚSQUEDA
+                // ════════════════════════════════════════════════════════════
 
-            Spacer(Modifier.height(16.dp))
+                MealSearch(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = handleSearch
+                )
 
-            MealCatalog(
-                foodItems = foodItems,
-                onMealClick = {
-                    selectedMeal.value = it
+                Spacer(Modifier.height(16.dp))
+
+                // ════════════════════════════════════════════════════════════
+                // MOSTRAR CATÁLOGO O RESULTADOS DE BÚSQUEDA
+                // ════════════════════════════════════════════════════════════
+
+                if (searchQuery.isEmpty()) {
+                    // ════════════════════════════════════════════════════════
+                    // VISTA: CATÁLOGO POR CATEGORÍA
+                    // ════════════════════════════════════════════════════════
+
+                    MealCatalog(
+                        viewModel = viewModel,
+                        onMealClick = { foodItem ->
+                            selectedMeal = foodItem
+                        }
+                    )
+                } else {
+                    // ════════════════════════════════════════════════════════
+                    // VISTA: RESULTADOS DE BÚSQUEDA
+                    // ════════════════════════════════════════════════════════
+
+                    when {
+                        isLoading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Color(0xFF8B0000)
+                                )
+                            }
+                        }
+
+                        error != null -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = " ${error ?: "Error desconocido"}",
+                                    color = Color(0xFFB71C1C),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        searchQuery.length < 2 -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Escribe al menos 2 caracteres para buscar",
+                                    color = Color(0xFF888888)
+                                )
+                            }
+                        }
+
+                        foodItemsToDisplay.isEmpty() -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No se encontraron alimentos",
+                                    color = Color(0xFF888888)
+                                )
+                            }
+                        }
+
+                        else -> {
+                            // Mostrar resultados de búsqueda
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                            ) {
+                                Text(
+                                    text = "Resultados (${foodItemsToDisplay.size})",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1A1A1A),
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                )
+                                foodItemsToDisplay.forEach { foodItem ->
+                                    FoodItemCard(
+                                        foodItem = foodItem,
+                                        onClickCard = { selectedMeal = it }
+                                    )
+                                    Spacer(Modifier.height(10.dp))
+                                }
+                            }
+                        }
+                    }
                 }
-            )
-        }
-        selectedMeal.value?.let { item ->
-            RegisterMealDialog(
-                foodItem = item,
-                onDismiss = { selectedMeal.value = null },
-                onRegister = { quantity ->
-                    onRegisterMeal()
-                    selectedMeal.value = null
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // DIÁLOGO DE REGISTRO
+            // ════════════════════════════════════════════════════════════════
+
+            selectedMeal?.let { item ->
+                // Limpiar resultado previo al abrir el diálogo, para que no se cierre solo
+                LaunchedEffect(item.foodItemId) {
+                    viewModel.clearRegisterResult()
                 }
-            )
+                RegisterMealDialog(
+                    foodItem = item,
+                    patientId = patientId,
+                    viewModel = viewModel,
+                    onDismiss = {
+                        selectedMeal = null
+                        viewModel.clearWarning()
+                        viewModel.clearError()
+                        viewModel.clearRegisterResult()
+                    },
+                    onSuccess = {
+                        selectedMeal = null
+                        onRegisterSuccess()
+                    }
+                )
+            }
         }
     }
-}
-
-@Preview
-@Composable
-fun NewMealPreview() {
-    NewNutritionalMealScreen()
 }

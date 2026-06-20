@@ -6,12 +6,12 @@ import pe.edu.upc.ferovafamily.domain.model.Patient
 fun PatientResponse.toDomain(): Patient = Patient(
     id        = id,
     name      = name,
-    lastName  = lastName,
+    lastName  = lastName   ?: "",
     birthDate = birthDate  ?: "",
     gender    = gender     ?: "",
     weight    = weight     ?: 0.0,
     height    = height     ?: 0.0,
-    motherId  = motherId
+    motherId  = motherId   ?: ""
 )
 
 

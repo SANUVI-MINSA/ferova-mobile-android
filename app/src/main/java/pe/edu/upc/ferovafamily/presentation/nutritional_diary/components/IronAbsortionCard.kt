@@ -41,14 +41,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import pe.edu.upc.ferovafamily.R
+import pe.edu.upc.ferovafamily.domain.model.Patient
 import java.util.Locale
 
 @Composable
 fun IronAbsorptionCard(
-    selectedPatient: String,
+    selectedPatient: Patient?,
     totalIron: Double,
-    patients: List<String>,
-    onPatientSelected: (String) -> Unit,
+    patients: List<Patient>,
+    onPatientSelected: (Patient) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -79,9 +80,9 @@ fun IronAbsorptionCard(
 
 @Composable
 fun PatientChip(
-    patients: List<String>,
-    selectedPatient: String,
-    onPatientSelected: (String) -> Unit,
+    patients: List<Patient>,
+    selectedPatient: Patient?,
+    onPatientSelected: (Patient) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -104,7 +105,7 @@ fun PatientChip(
                     .background(Color(0xFFCCCCCC))
             )
             Text(
-                text = selectedPatient,
+                text = selectedPatient?.name ?: "",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFF1A1A1A)
@@ -124,7 +125,7 @@ fun PatientChip(
             onDismissRequest = { expanded = false },
             containerColor = Color(0xFFF9F5F3)
         ) {
-            patients.filter { it != selectedPatient }.forEach { patient ->
+            patients.filter { it.id != selectedPatient?.id }.forEach { patient ->
                 DropdownMenuItem(
                     text = {
                         Row(
@@ -138,7 +139,7 @@ fun PatientChip(
                                     .background(Color(0xFFCCCCCC))
                             )
                             Text(
-                                text = patient,
+                                text = "${patient.name}",
                                 fontSize = 15.sp,
                                 color = Color(0xFF1A1A1A)
                             )

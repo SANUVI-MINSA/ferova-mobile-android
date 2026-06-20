@@ -1,63 +1,77 @@
 package pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.ActionButtons
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.IronAbsorptionCard
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.TipCard
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.TodayFoodEntriesList
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodDatabase
-import pe.edu.upc.ferovafamily.presentation.nutritional_diary.model.FoodEntryDatabase
 import pe.edu.upc.ferovafamily.presentation.theme.Crimson
 import pe.edu.upc.ferovafamily.presentation.theme.White
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NutritionalDiaryScreen(
+    patientId: String,
     onNewFoodEntry: () -> Unit = {},
     onSeeFoodHistory: (String) -> Unit = {},
-    diaryViewModel: NutritionalDiaryViewModel = viewModel()
+    viewModel: NutritionalDiaryViewModel = viewModel()
 ) {
-    val diaryState by diaryViewModel.uiState.collectAsState()
+    // ════════════════════════════════════════════════════════════════════════
+    // ESTADOS DEL VIEWMODEL
+    // ════════════════════════════════════════════════════════════════════════
 
-    val patients        = diaryState.patients.ifEmpty { listOf("Sin hijos registrados") }
-    val selectedPatient = diaryState.selectedPatient.ifBlank { patients.first() }
+    val uiState by viewModel.uiState.collectAsState()
+    val todayDiary by viewModel.todayDiary.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
 
-    val foodEntries = FoodEntryDatabase.foodEntries
-    val foodItems   = FoodDatabase.foodItems
-    val ironAbsorbed = foodEntries
-        .filter { it.patientName == selectedPatient }
-        .sumOf { it.ironContributed }
-    val today = java.time.LocalDate.now().toString()
+    // ════════════════════════════════════════════════════════════════════════
+    // ESTADOS LOCALES
+    // ════════════════════════════════════════════════════════════════════════
+
+    // El niño seleccionado proviene del estado del ViewModel (compartido).
+    // Si aún no hay selección, usamos el patientId recibido por parámetro.
+    val selectedPatientId = uiState.selectedPatient?.id ?: patientId
+    val selectedPatientName = uiState.selectedPatient?.name
+
+    // ════════════════════════════════════════════════════════════════════════
+    // EFECTOS
+    // ════════════════════════════════════════════════════════════════════════
+
+    // Recargar el diario cada vez que cambia el niño seleccionado
+    LaunchedEffect(selectedPatientId) {
+        if (selectedPatientId.isNotBlank()) {
+            android.util.Log.d("NUTRITION_DEBUG", "patientId seleccionado = $selectedPatientId")
+            viewModel.loadTodayDiary(selectedPatientId)
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // DATOS DEL DIARIO
+    // ════════════════════════════════════════════════════════════════════════
+
+    val totalIronAbsorbed = todayDiary?.totalIronAbsorbed ?: 0.0
+    val foodEntries = todayDiary?.foodEntries ?: emptyList()
+    val diaryDate = todayDiary?.date ?: ""
 
     Scaffold(
         containerColor = White,
         topBar = {
             TopAppBar(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 title = {
                     Text(
                         text = "Diario Nutricional",
@@ -70,63 +84,166 @@ fun NutritionalDiaryScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-        ) {
-            Spacer(Modifier.height(24.dp))
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Spacer(Modifier.height(24.dp))
 
-            IronAbsorptionCard(
-                selectedPatient = selectedPatient,
-                totalIron = ironAbsorbed,
-                patients = patients,
-                onPatientSelected = { newName ->
-                    diaryViewModel.selectPatient(newName)
+                // ════════════════════════════════════════════════════════════
+                // TARJETA DE ABSORCIÓN DE HIERRO
+                // ════════════════════════════════════════════════════════════
+
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color(0xFF8B0000)
+                            )
+                        }
+                    }
+
+                    error != null -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = " ${error ?: "Error al cargar"}",
+                                color = Color(0xFFB71C1C),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    else -> {
+                        IronAbsorptionCard(
+                            selectedPatient = uiState.selectedPatient,
+                            totalIron = totalIronAbsorbed,
+                            patients = uiState.patients,
+                            onPatientSelected = { patient ->
+                                viewModel.selectPatient(patient.id)
+                            }
+                        )
+                    }
                 }
-            )
 
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
-            TodayFoodEntriesList(
-                patientName = selectedPatient,
-                date = today,
-                foodItems = foodItems,
-                foodEntries = foodEntries
-            )
+                // ════════════════════════════════════════════════════════════
+                // LISTA DE ALIMENTOS DE HOY
+                // ════════════════════════════════════════════════════════════
 
-            Spacer(Modifier.height(24.dp))
+                TodayFoodEntriesList(
+                    patientId = selectedPatientId,
+                    patientName = selectedPatientName,
+                    viewModel = viewModel
+                )
 
-            ActionButtons(onNewFoodEntry, { onSeeFoodHistory(selectedPatient) })
+                Spacer(Modifier.height(24.dp))
 
-            Spacer(Modifier.height(24.dp))
+                // ════════════════════════════════════════════════════════════
+                // BOTONES DE ACCIÓN
+                // ════════════════════════════════════════════════════════════
 
-            TipCard(
-                titleTipText = "Tip de hoy",
-                tipText = "Combina las lentajas con citricos\n" +
-                        "(Vitamina C) para mejorar la absorcion del hierro.",
-                titleTipStyle = TextStyle(
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                ),
-                tipTextStyle = TextStyle(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color.Black,
-                    lineHeight = 20.sp
-                ),
-            )
+                ActionButtons(
+                    onNewFoodEntry = onNewFoodEntry,
+                    onSeeFoodHistory = {
+                        onSeeFoodHistory(selectedPatientId)
+                    }
+                )
 
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
+                // ════════════════════════════════════════════════════════════
+                // TIPS EDUCATIVOS
+                // ════════════════════════════════════════════════════════════
+
+                TipCard(
+                    titleTipText = "💡 Tip de hoy",
+                    tipText = "Combina las lentejas con cítricos (naranja, limón) para mejorar la absorción del hierro. La Vitamina C aumenta la absorción del hierro no-hemo hasta 3 veces.",
+                    titleTipStyle = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
+                    ),
+                    tipTextStyle = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = Color(0xFF555555),
+                        lineHeight = 20.sp
+                    ),
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                TipCard(
+                    titleTipText = "⚠️ Evita estos alimentos",
+                    tipText = "Evita consumir té, café y lácteos durante las comidas principales, ya que reducen la absorción del hierro hasta 50%.",
+                    containerColor = Color(0xFFFFF3E0),
+                    bulbColor = Color(0xFFFF9800),
+                    titleTipStyle = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFE65100)
+                    ),
+                    tipTextStyle = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = Color(0xFF555555),
+                        lineHeight = 20.sp
+                    ),
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                TipCard(
+                    titleTipText = "🥇 Alimentos con más hierro",
+                    tipText = "La sangrecita de pollo tiene 29.5 mg de hierro por 100g, siendo el alimento con mayor contenido de hierro hemo. ¡Perfecto para fortalecer a tu pequeño!",
+                    containerColor = Color(0xFFE8F5E9),
+                    bulbColor = Color(0xFF4CAF50),
+                    titleTipStyle = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E7D32)
+                    ),
+                    tipTextStyle = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = Color(0xFF555555),
+                        lineHeight = 20.sp
+                    ),
+                )
+
+                Spacer(Modifier.height(24.dp))
+            }
+
+            // ════════════════════════════════════════════════════════════════
+            // LOADER GLOBAL
+            // ════════════════════════════════════════════════════════════════
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color(0xFF8B0000)
+                    )
+                }
+            }
         }
     }
-}
-
-@Preview
-@Composable
-fun NutritionalDiaryPreview() {
-    NutritionalDiaryScreen()
 }
