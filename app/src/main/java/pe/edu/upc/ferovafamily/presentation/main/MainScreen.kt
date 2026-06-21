@@ -118,14 +118,12 @@ fun MainScreen(
 
             // ──────────────── TABS ────────────────
 
-            // Tab: Inicio
             composable(MainRoutes.HOME) {
                 HomeScreen(
                     onNavigateToAchievements = {
                         navController.navigate(ProgressRoutes.PROGRESS)
                     },
                     onNavigateToNewMeal = {
-                        // Llevar al tab "Diario" (donde están los alimentos/recetas)
                         navController.navigate(MainRoutes.DIARY) {
                             popUpTo(MainRoutes.HOME) { saveState = true }
                             launchSingleTop = true
@@ -136,7 +134,6 @@ fun MainScreen(
                         navController.navigate(PatientManagementRoutes.CREATE_PATIENT)
                     },
                     onNavigateToHistory = onNavigateToHistory,
-
                     onNavigateToHealthCenters = {
                         navController.navigate(AppointmentsRoutes.HEALTH_CENTERS_MAP)
                     },
@@ -149,7 +146,6 @@ fun MainScreen(
             // ════════════════════════════════════════════════════════════════
 
             composable(MainRoutes.DIARY) {
-                // Obtener patientId del TokenManager o usar default
                 val context = LocalContext.current
                 val tokenManager = remember(context) {
                     TokenManager.getInstance(context)
@@ -158,7 +154,7 @@ fun MainScreen(
 
                 NutritionalDiaryScreen(
                     patientId = selectedPatientId,
-                    viewModel = nutritionalDiaryViewModel,   // instancia compartida
+                    viewModel = nutritionalDiaryViewModel,
                     onNewFoodEntry = {
                         navController.navigate(NutritionalDiaryRoutes.NEW_MEAL)
                     },
@@ -170,7 +166,7 @@ fun MainScreen(
                 )
             }
 
-            // Tab: Citas — mapa de postas + flujo de agendar cita
+            // Tab: Citas
             composable(MainRoutes.APPOINTMENTS) {
                 AppointmentsScreen(
                     onScheduleAppointment = {
@@ -236,12 +232,19 @@ fun MainScreen(
                 )
             }
 
-            // ──────────── SUBPANTALLA: CREACION DE PACIENTE ────────────
+            // ════════════════════════════════════════════════════════════════
+            // ✅ SUBPANTALLA: CREACION DE PACIENTE (MODIFICADA)
+            // ════════════════════════════════════════════════════════════════
 
             composable(route = PatientManagementRoutes.CREATE_PATIENT) {
                 CreatePatientScreen(
                     onBack = { navController.popBackStack() },
-                    onRegisterChild = { navController.popBackStack() }
+                    // ✅ Cuando se registra un paciente, refrescar la lista y volver
+                    onRegisterChild = {
+                        android.util.Log.d("MAIN_SCREEN", "🔄 Paciente registrado, refrescando lista...")
+                        nutritionalDiaryViewModel.refreshPatients()
+                        navController.popBackStack()
+                    }
                 )
             }
 
@@ -267,7 +270,6 @@ fun MainScreen(
                 )
             }
 
-
             composable(ProgressRoutes.STREAK_LOST) {
                 StreakLostScreen(
                     onStartAgain = {
@@ -282,7 +284,6 @@ fun MainScreen(
             // SUBPANTALLAS: DIARIO NUTRICIONAL
             // ════════════════════════════════════════════════════════════════
 
-            // Nueva entrada de alimento
             composable(NutritionalDiaryRoutes.NEW_MEAL) {
                 val context = LocalContext.current
                 val tokenManager = remember(context) {
@@ -292,7 +293,7 @@ fun MainScreen(
 
                 NewNutritionalMealScreen(
                     patientId = selectedPatientId,
-                    viewModel = nutritionalDiaryViewModel,   // misma instancia compartida
+                    viewModel = nutritionalDiaryViewModel,
                     onBack = { navController.popBackStack() },
                     onRegisterSuccess = {
                         navController.popBackStack()
@@ -300,7 +301,6 @@ fun MainScreen(
                 )
             }
 
-            // Historial nutricional con filtro de fechas
             composable(
                 route = "${NutritionalDiaryRoutes.HISTORY}/{patientId}",
                 arguments = listOf(navArgument("patientId") { type = NavType.StringType })
