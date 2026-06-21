@@ -26,6 +26,7 @@ import pe.edu.upc.ferovafamily.presentation.progress.ProgressViewModel
 import pe.edu.upc.ferovafamily.presentation.progress.components.HemoglobinChart
 import pe.edu.upc.ferovafamily.presentation.progress.components.MedalListItem
 import pe.edu.upc.ferovafamily.presentation.progress.model.HemoglobinPoint
+import pe.edu.upc.ferovafamily.presentation.theme.White
 
 private val Crimson = Color(0xFF8B1A1A)
 private val Cream = Color(0xFFFDF8F8)
@@ -48,7 +49,7 @@ fun ProgressScreen(
         containerColor = Cream,
         topBar = {
             TopAppBar(
-                title = { Text("Progreso y Medallas", fontWeight = FontWeight.Bold) },
+                title = { Text("Progreso y Medallas", fontWeight = FontWeight.Bold, color = White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
