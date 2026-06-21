@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.nutritional_diary.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -38,6 +39,8 @@ import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.MealSea
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.components.RegisterMealDialog
 import pe.edu.upc.ferovafamily.presentation.theme.CrimsonDark
 
+private const val TAG = "NewNutritionalMeal"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewNutritionalMealScreen(
@@ -46,6 +49,11 @@ fun NewNutritionalMealScreen(
     onRegisterSuccess: () -> Unit = {},
     viewModel: NutritionalDiaryViewModel = viewModel()
 ) {
+    Log.d(TAG, "========================================")
+    Log.d(TAG, "📱 NewNutritionalMealScreen - INICIO")
+    Log.d(TAG, "📱 patientId: $patientId")
+    Log.d(TAG, "========================================")
+
     // ════════════════════════════════════════════════════════════════════════
     // ESTADOS DEL VIEWMODEL
     // ════════════════════════════════════════════════════════════════════════
@@ -68,7 +76,7 @@ fun NewNutritionalMealScreen(
     // ════════════════════════════════════════════════════════════════════════
 
     LaunchedEffect(Unit) {
-        // Cargar categoría MEAT por defecto
+        Log.d(TAG, "🔄 Cargando categoría MEAT por defecto")
         viewModel.loadFoodsByCategory("MEAT")
     }
 
@@ -77,12 +85,13 @@ fun NewNutritionalMealScreen(
     // ════════════════════════════════════════════════════════════════════════
 
     val handleSearch = { query: String ->
+        Log.d(TAG, "🔍 Búsqueda: '$query'")
         searchQuery = query
         if (query.isEmpty()) {
-            // Si se limpia la búsqueda, cargar categoría por defecto
+            Log.d(TAG, "📂 Cargando categoría MEAT por defecto")
             viewModel.loadFoodsByCategory("MEAT")
         } else if (query.length >= 2) {
-            // Solo buscar si hay 2+ caracteres
+            Log.d(TAG, "🔍 Buscando: '$query'")
             viewModel.searchFoods(query)
         }
     }
@@ -92,12 +101,12 @@ fun NewNutritionalMealScreen(
     // ════════════════════════════════════════════════════════════════════════
 
     val foodItemsToDisplay = if (searchQuery.isEmpty()) {
-        // Mostrar por categoría (desde foodsByCategory)
         foodsByCategory?.items ?: emptyList()
     } else {
-        // Mostrar resultados de búsqueda
         searchFoodResult?.items ?: emptyList()
     }
+
+    Log.d(TAG, "📋 foodItemsToDisplay size: ${foodItemsToDisplay.size}")
 
     Scaffold(
         containerColor = Color(0xFFFFF8F6),
@@ -131,10 +140,6 @@ fun NewNutritionalMealScreen(
             ) {
                 Spacer(Modifier.height(16.dp))
 
-                // ════════════════════════════════════════════════════════════
-                // BARRA DE BÚSQUEDA
-                // ════════════════════════════════════════════════════════════
-
                 MealSearch(
                     searchQuery = searchQuery,
                     onSearchQueryChange = handleSearch
@@ -142,26 +147,15 @@ fun NewNutritionalMealScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                // ════════════════════════════════════════════════════════════
-                // MOSTRAR CATÁLOGO O RESULTADOS DE BÚSQUEDA
-                // ════════════════════════════════════════════════════════════
-
                 if (searchQuery.isEmpty()) {
-                    // ════════════════════════════════════════════════════════
-                    // VISTA: CATÁLOGO POR CATEGORÍA
-                    // ════════════════════════════════════════════════════════
-
                     MealCatalog(
                         viewModel = viewModel,
                         onMealClick = { foodItem ->
+                            Log.d(TAG, "👆 Click en alimento: ${foodItem.name} (ID: ${foodItem.foodItemId})")
                             selectedMeal = foodItem
                         }
                     )
                 } else {
-                    // ════════════════════════════════════════════════════════
-                    // VISTA: RESULTADOS DE BÚSQUEDA
-                    // ════════════════════════════════════════════════════════
-
                     when {
                         isLoading -> {
                             Box(
@@ -220,7 +214,6 @@ fun NewNutritionalMealScreen(
                         }
 
                         else -> {
-                            // Mostrar resultados de búsqueda
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -235,7 +228,10 @@ fun NewNutritionalMealScreen(
                                 foodItemsToDisplay.forEach { foodItem ->
                                     FoodItemCard(
                                         foodItem = foodItem,
-                                        onClickCard = { selectedMeal = it }
+                                        onClickCard = {
+                                            Log.d(TAG, "👆 Click en resultado: ${it.name} (ID: ${it.foodItemId})")
+                                            selectedMeal = it
+                                        }
                                     )
                                     Spacer(Modifier.height(10.dp))
                                 }
@@ -245,12 +241,8 @@ fun NewNutritionalMealScreen(
                 }
             }
 
-            // ════════════════════════════════════════════════════════════════
-            // DIÁLOGO DE REGISTRO
-            // ════════════════════════════════════════════════════════════════
-
             selectedMeal?.let { item ->
-                // Limpiar resultado previo al abrir el diálogo, para que no se cierre solo
+                Log.d(TAG, "📦 Abriendo diálogo para: ${item.name} (ID: ${item.foodItemId})")
                 LaunchedEffect(item.foodItemId) {
                     viewModel.clearRegisterResult()
                 }
@@ -259,12 +251,14 @@ fun NewNutritionalMealScreen(
                     patientId = patientId,
                     viewModel = viewModel,
                     onDismiss = {
+                        Log.d(TAG, "❌ Dialogo descartado")
                         selectedMeal = null
                         viewModel.clearWarning()
                         viewModel.clearError()
                         viewModel.clearRegisterResult()
                     },
                     onSuccess = {
+                        Log.d(TAG, "✅ Registro exitoso, cerrando pantalla")
                         selectedMeal = null
                         onRegisterSuccess()
                     }

@@ -1,5 +1,6 @@
 package pe.edu.upc.ferovafamily.presentation.nutritional_diary.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +23,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,9 +35,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import pe.edu.upc.ferovafamily.domain.model.nutrition.FoodItem
 import pe.edu.upc.ferovafamily.presentation.nutritional_diary.NutritionalDiaryViewModel
+
+private const val TAG = "RegisterMealDialog"
+
 @Composable
 fun RegisterMealDialog(
     foodItem: FoodItem,
@@ -50,28 +53,38 @@ fun RegisterMealDialog(
     var quantity by remember { mutableStateOf("") }
     var quantityError by remember { mutableStateOf(false) }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // ESTADOS DEL VIEWMODEL
-    // ════════════════════════════════════════════════════════════════════════
-
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val warning by viewModel.warning.collectAsState()
     val registerResult by viewModel.registerFoodEntryResult.collectAsState()
 
+    Log.d(TAG, "========================================")
+    Log.d(TAG, "📋 RegisterMealDialog - INICIO")
+    Log.d(TAG, "📋 foodItem: ${foodItem.name} (ID: ${foodItem.foodItemId})")
+    Log.d(TAG, "📋 patientId: $patientId")
+    Log.d(TAG, "📋 isLoading: $isLoading")
+    Log.d(TAG, "📋 error: $error")
+    Log.d(TAG, "📋 registerResult: $registerResult")
+    Log.d(TAG, "========================================")
+
+    // ✅ MODIFICADO: Esperar un poco antes de cerrar para que el backend procese
     LaunchedEffect(registerResult) {
         if (registerResult != null && error == null) {
+            Log.d(TAG, "✅ registerResult recibido con éxito")
+            // ✅ Esperar 800ms para que el backend procese el registro
+            delay(800)
+            Log.d(TAG, "🔄 Recargando diario después de registro")
+            viewModel.loadTodayDiary(patientId)
             onSuccess()
             onDismiss()
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // MANEJADOR DE REGISTRO
-    // ════════════════════════════════════════════════════════════════════════
-
     fun handleRegister() {
+        Log.d(TAG, "🔘 handleRegister - Botón REGISTRAR presionado")
+
         if (quantity.isEmpty()) {
+            Log.d(TAG, "❌ Cantidad vacía")
             quantityError = true
             return
         }
@@ -79,17 +92,26 @@ fun RegisterMealDialog(
         val qty = quantity.toIntOrNull()
 
         if (qty == null || qty <= 0) {
+            Log.d(TAG, "❌ Cantidad inválida: '$quantity'")
             quantityError = true
             return
         }
 
         quantityError = false
 
+        Log.d(TAG, "✅ Cantidad válida: $qty")
+        Log.d(TAG, "📤 Llamando a viewModel.registerFoodEntry con:")
+        Log.d(TAG, "   - patientId: $patientId")
+        Log.d(TAG, "   - foodItemId: ${foodItem.foodItemId}")
+        Log.d(TAG, "   - quantity: $qty")
+
         viewModel.registerFoodEntry(
             patientId = patientId,
             foodItemId = foodItem.foodItemId,
             quantity = qty
         )
+
+        Log.d(TAG, "📤 viewModel.registerFoodEntry llamado")
     }
 
     AlertDialog(
@@ -106,10 +128,6 @@ fun RegisterMealDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-
-                // ════════════════════════════════════════════════════════════
-                // ADVERTENCIA SI ES INHIBIDOR (del backend)
-                // ════════════════════════════════════════════════════════════
 
                 if (foodItem.isInhibitor) {
                     Box(
@@ -138,10 +156,6 @@ fun RegisterMealDialog(
                         )
                     }
                 }
-
-                // ════════════════════════════════════════════════════════════
-                // INFORMACIÓN DEL ALIMENTO
-                // ════════════════════════════════════════════════════════════
 
                 Box(
                     modifier = Modifier
@@ -199,10 +213,6 @@ fun RegisterMealDialog(
                     }
                 }
 
-                // ════════════════════════════════════════════════════════════
-                // INPUT DE CANTIDAD
-                // ════════════════════════════════════════════════════════════
-
                 Text(
                     text = "Cantidad",
                     fontSize = 16.sp,
@@ -247,9 +257,8 @@ fun RegisterMealDialog(
                     ) {
                         Text(
                             text = if (foodItem.foodItemId.let { id ->
-                                    // Revisar la categoría del alimento para determinar unidad
-                                    id in listOf("FOOD_036", "FOOD_037", "FOOD_038") // Lácteos
-                                            || id in listOf("FOOD_039", "FOOD_040", "FOOD_041", "FOOD_042") // Bebidas
+                                    id in listOf("FOOD_036", "FOOD_037", "FOOD_038")
+                                            || id in listOf("FOOD_039", "FOOD_040", "FOOD_041", "FOOD_042")
                                 }) "ml" else "g",
                             fontSize = 13.sp,
                             color = Color(0xFF555555)
@@ -264,10 +273,6 @@ fun RegisterMealDialog(
                         color = Color(0xFFB71C1C)
                     )
                 }
-
-                // ════════════════════════════════════════════════════════════
-                // MOSTRAR ERROR DEL SERVIDOR
-                // ════════════════════════════════════════════════════════════
 
                 if (error != null) {
                     Box(
@@ -285,10 +290,6 @@ fun RegisterMealDialog(
                         )
                     }
                 }
-
-                // ════════════════════════════════════════════════════════════
-                // MOSTRAR ADVERTENCIA DEL BACKEND
-                // ════════════════════════════════════════════════════════════
 
                 if (warning != null && registerResult != null) {
                     Box(
@@ -341,7 +342,10 @@ fun RegisterMealDialog(
         dismissButton = {
             if (!isLoading) {
                 Button(
-                    onClick = onDismiss,
+                    onClick = {
+                        Log.d(TAG, "🔘 Botón CANCELAR presionado")
+                        onDismiss()
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
