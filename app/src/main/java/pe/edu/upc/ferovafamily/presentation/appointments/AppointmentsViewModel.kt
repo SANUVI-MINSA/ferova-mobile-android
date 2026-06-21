@@ -30,7 +30,7 @@ data class AppointmentsUiState(
     val userLocation: Pair<Double, Double> = Pair(
         -12.0250,
         -76.9990
-    ),//Lat y Lng, incluidos en valor default
+    ),
     val appointmentHistory: List<Appointment> = emptyList(),
     val nextAppointment: Appointment? = null,
     val cancelMessage: String? = null,
@@ -52,7 +52,7 @@ data class AppointmentsUiState(
     val isLoadingSlots: Boolean = false,
     val isBooking: Boolean = false,
     val error: String? = null,
-    val bookingSuccess: String? = null,   // appointmentId confirmado
+    val bookingSuccess: String? = null,
 )
 
 class AppointmentsViewModel(application: Application) : AndroidViewModel(application) {
@@ -65,7 +65,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     private val _state = MutableStateFlow(AppointmentsUiState())
     val state: StateFlow<AppointmentsUiState> = _state.asStateFlow()
 
-    // Verificacion de permiso de ubicacion
     fun hasLocationPermission(): Boolean {
         return ActivityCompat.checkSelfPermission(
             getApplication(),
@@ -73,7 +72,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    // Actualizacion de estado
     fun onPermissionResult(isGranted: Boolean) {
         _state.update {
             it.copy(
@@ -88,10 +86,8 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    //Obtiene la ubicacion del usuario
     @SuppressLint("MissingPermission")
     private fun getLocation() {
-
         android.util.Log.d("POSTAS", "📍 hasLocationPermission: ${hasLocationPermission()}")
 
         if (!hasLocationPermission()) {
@@ -102,7 +98,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         _state.update { it.copy(isLoadingLocation = true) }
         val fusedClient = LocationServices.getFusedLocationProviderClient(getApplication())
 
-        // 1. Intentar obtener la última ubicación conocida (es casi instantáneo)
         fusedClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 _state.update { state ->
@@ -113,7 +108,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 }
                 loadNearbyFacilities()
             } else {
-                // 2. Si no hay ubicación previa, solicitar la ubicación actual
                 requestCurrentLocation(fusedClient)
             }
         }.addOnFailureListener {
@@ -141,7 +135,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // ── Postas cercanas a 10 km de la ubicacion del usuario
     fun loadNearbyFacilities() {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingCenters = true, error = null) }
@@ -161,7 +154,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // Obtener HealthCenter por Id
     fun getCenterById(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingCenter = true, error = null) }
@@ -176,14 +168,19 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // Obtener pacientes
     fun getPatients() {
+        android.util.Log.d("APPOINTMENTS_VM", "🔄 getPatients - Cargando pacientes...")
         viewModelScope.launch {
             _state.update { it.copy(isLoadingPatients = true, error = null) }
             try {
                 val patients = repository.getPatients()
+                android.util.Log.d("APPOINTMENTS_VM", "✅ Pacientes cargados: ${patients.size}")
+                patients.forEach { patient ->
+                    android.util.Log.d("APPOINTMENTS_VM", "   - ${patient.name} (ID: ${patient.id})")
+                }
                 _state.update { it.copy(patients = patients, isLoadingPatients = false) }
             } catch (e: Exception) {
+                android.util.Log.e("APPOINTMENTS_VM", "❌ Error cargando pacientes: ${e.message}")
                 _state.update {
                     it.copy(isLoadingPatients = false, error = "Failed loading patients: $e")
                 }
@@ -191,7 +188,15 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // ── Slots disponibles ─────────────────────────────────────────────────────
+    /**
+     * ✅ REFRESCAR PACIENTES - Útil después de agregar un nuevo paciente
+     */
+    fun refreshPatients() {
+        android.util.Log.d("APPOINTMENTS_VM", "🔄 refreshPatients - REFRESCANDO PACIENTES...")
+        android.util.Log.d("APPOINTMENTS_VM", "   Pacientes antes: ${_state.value.patients.size}")
+        getPatients()
+    }
+
     fun loadAvailableSlots(centerId: String, date: LocalDate) {
         viewModelScope.launch {
             _state.update {
@@ -213,22 +218,17 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    //Traduccion del texto de error
     private fun translateError(errorMessage: String): String {
         return when {
             errorMessage.contains("This schedule is already reserved") ->
                 "El horario elegido ya está ocupado"
-
             errorMessage.contains("This facility has no assigned nurse") ->
                 "La posta no tiene un enfermero designado"
-
             errorMessage.contains("Appointment not found") -> "La cita no existe"
-
             else -> "Error desconocido"
         }
     }
 
-    // ── Reservar cita ─────────────────────────────────────────────────────────
     fun bookAppointment(
         centerId: String,
         centerName: String,
@@ -271,7 +271,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         _state.update { it.copy(error = null) }
     }
 
-    // Obtener siguiente cita medica
     fun loadNextAppointment() {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingNextAppointment = true, error = null) }
@@ -294,7 +293,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    //Obtener historial de citas
     fun loadAppointmentHistory(patientId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoadingAppointmentHistory = true, error = null) }
@@ -317,7 +315,6 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    //Cancelar cita
     fun cancelAppointment(appointmentId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isCancelingAppointment = true, error = null) }
@@ -341,17 +338,14 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // ── Limpiar mensaje de cancelacion al cerrar popup ────────────────────────────────────
     fun clearCancelMessage() {
         _state.update { it.copy(cancelMessage = null) }
     }
 
-    //Limpiar el estado de reserva (éxito y cita creada)
     fun resetBookingState() {
         _state.update { it.copy(bookingSuccess = null, appointment = null) }
     }
 
-    //Eliminar la cita siguiente
     fun clearNextAppointment() {
         _state.update { it.copy(nextAppointment = null) }
     }

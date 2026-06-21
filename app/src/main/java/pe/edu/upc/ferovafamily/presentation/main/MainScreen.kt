@@ -242,7 +242,10 @@ fun MainScreen(
                     // ✅ Cuando se registra un paciente, refrescar la lista y volver
                     onRegisterChild = {
                         android.util.Log.d("MAIN_SCREEN", "🔄 Paciente registrado, refrescando lista...")
+                        // ✅ Refrescar pacientes en el DIARIO
                         nutritionalDiaryViewModel.refreshPatients()
+                        // ✅ Refrescar pacientes en CITAS
+                        appointmentsViewModel.refreshPatients()
                         navController.popBackStack()
                     }
                 )

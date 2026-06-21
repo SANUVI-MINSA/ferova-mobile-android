@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,9 +45,22 @@ fun AppointmentBookingScreen(
     viewModel: AppointmentsViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var selectedPatient by remember(state.patients) {
-        mutableStateOf(state.patients.firstOrNull())
+
+    // ✅ CORREGIDO: Usar state.patients directamente
+    val patients = state.patients
+    var selectedPatient by remember { mutableStateOf<Patient?>(null) }
+
+    // ✅ Actualizar selectedPatient cuando cambien los pacientes
+    LaunchedEffect(patients) {
+        if (patients.isNotEmpty()) {
+            val currentSelectedId = selectedPatient?.id
+            val foundPatient = patients.find { it.id == currentSelectedId }
+            selectedPatient = foundPatient ?: patients.firstOrNull()
+        } else {
+            selectedPatient = null
+        }
     }
+
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
@@ -106,7 +121,6 @@ fun AppointmentBookingScreen(
         }
     ) { padding ->
 
-        //Pantalla de carga hasta cargar pacientes
         if (state.isLoadingPatients || state.isLoadingCenter) {
             Box(
                 modifier = Modifier
@@ -127,13 +141,26 @@ fun AppointmentBookingScreen(
         ) {
             Text("Selecionar Paciente", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                state.patients.forEach { patient ->
-                    PatientAvatar(
-                        patient = patient,
-                        isSelected = patient.id == selectedPatient?.id,
-                        onClick = { selectedPatient = patient }
-                    )
+
+            if (patients.isEmpty()) {
+                Text(
+                    "No hay pacientes registrados",
+                    color = Color.Gray,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                // ✅ USAR LAZYROW PARA SCROLL HORIZONTAL
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(patients) { patient ->
+                        PatientAvatar(
+                            patient = patient,
+                            isSelected = patient.id == selectedPatient?.id,
+                            onClick = { selectedPatient = patient }
+                        )
+                    }
                 }
             }
 
@@ -223,7 +250,6 @@ private fun CalendarGrid(
     availableDays: List<String> = emptyList()
 ) {
 
-    // Mapeo de nombre inglés a DayOfWeek
     val enabledDays = availableDays.mapNotNull {
         runCatching { DayOfWeek.valueOf(it.uppercase()) }.getOrNull()
     }
@@ -239,7 +265,6 @@ private fun CalendarGrid(
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Encabezados de días
             Row(modifier = Modifier.fillMaxWidth()) {
                 listOf("LU", "MA", "MI", "JU", "VI", "SA", "DO").forEachIndexed { i, dn ->
                     Text(

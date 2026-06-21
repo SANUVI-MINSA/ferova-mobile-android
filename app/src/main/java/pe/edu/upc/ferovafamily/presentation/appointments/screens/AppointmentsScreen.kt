@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,18 +30,16 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-// ── Colores del tema ──────────────────────────────────────────
 private val Crimson = Color(0xFFB71C1C)
 private val SoftPink = Color(0xFFFCE4EC)
 private val Cream = Color(0xFFFFF8F8)
 private val SuccessGreen = Color(0xFF2E7D32)
 private val CancelRed = Color(0xFFB71C1C)
 
-// ── Formateador de fecha legible ─────────────────────────────
 fun formatAppointmentDate(dateStr: String, timeStr: String): String {
     return try {
         val date = LocalDate.parse(dateStr)
-        val time = LocalTime.parse(timeStr.padStart(5, '0')) // "9:00" → "09:00"
+        val time = LocalTime.parse(timeStr.padStart(5, '0'))
         val datePart = date.format(
             DateTimeFormatter.ofPattern("d 'de' MMMM, yyyy", Locale("es"))
         ).replaceFirstChar { it.uppercase() }
@@ -87,7 +86,7 @@ fun formatTime12h(timeStr: String): String {
     }
 }
 
-// ── Pantalla principal ────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppointmentsScreen(
     onScheduleAppointment: () -> Unit,
@@ -95,13 +94,21 @@ fun AppointmentsScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    //Seleccion de id de paciente
-    var selectedPatientId by remember(state.patients) {
-        mutableStateOf(state.patients.firstOrNull()?.id ?: "")
-    }
-    var cancelingPatientId by remember { mutableStateOf("") }
+    // ✅ CORREGIDO: Usar state.patients directamente para la selección
+    // Si no hay pacientes, selectedPatientId es ""
+    val patients = state.patients
+    var selectedPatientId by remember { mutableStateOf("") }
 
-    // Popup de cancelación
+    // ✅ Actualizar selectedPatientId cuando cambien los pacientes
+    LaunchedEffect(patients) {
+        if (patients.isNotEmpty() && selectedPatientId.isEmpty()) {
+            selectedPatientId = patients.first().id
+        } else if (patients.isEmpty()) {
+            selectedPatientId = ""
+        }
+    }
+
+    var cancelingPatientId by remember { mutableStateOf("") }
     var showCancelDialog by remember { mutableStateOf(false) }
     var appointmentToCancel by remember { mutableStateOf("") }
 
@@ -110,14 +117,12 @@ fun AppointmentsScreen(
         viewModel.loadNextAppointment()
     }
 
-    // Recarga historial cuando cambia el paciente
     LaunchedEffect(selectedPatientId) {
         if (selectedPatientId.isNotEmpty()) {
             viewModel.loadAppointmentHistory(selectedPatientId)
         }
     }
 
-    // Recarga nextAppointment tras cancelar exitosamente
     LaunchedEffect(state.cancelMessage) {
         state.cancelMessage?.let {
             viewModel.loadNextAppointment()
@@ -137,7 +142,6 @@ fun AppointmentsScreen(
         }
     }
 
-    // ── Dialog de confirmación de cancelación ─────────────
     if (showCancelDialog) {
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
@@ -183,7 +187,6 @@ fun AppointmentsScreen(
                         .padding(horizontal = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Botón cancelar cita
                     Button(
                         onClick = {
                             cancelingPatientId = state.nextAppointment?.patientId ?: ""
@@ -210,7 +213,6 @@ fun AppointmentsScreen(
                             )
                         }
                     }
-                    // Botón mantener cita
                     OutlinedButton(
                         onClick = { showCancelDialog = false },
                         modifier = Modifier.fillMaxWidth(),
@@ -230,19 +232,17 @@ fun AppointmentsScreen(
     Scaffold(
         containerColor = Cream,
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Cream)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-            ) {
-                Text(
-                    "Citas",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Crimson
-                )
-            }
+            TopAppBar(
+                title = {
+                    Text(
+                        "Citas",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Crimson
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Cream)
+            )
         }
     ) { padding ->
         LazyColumn(
@@ -253,7 +253,7 @@ fun AppointmentsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            //Selección de paciente ─────────────
+            // ✅ SELECTOR DE PACIENTES - Usa la lista actualizada
             item {
                 PatientSelectorSection(
                     patients = state.patients,
@@ -262,7 +262,6 @@ fun AppointmentsScreen(
                 )
             }
 
-            // Cita actual ────────────────────────
             item {
                 Text(
                     "Cita Actual",
@@ -277,12 +276,11 @@ fun AppointmentsScreen(
                     onSchedule = onScheduleAppointment,
                     onCancel = { id ->
                         appointmentToCancel = id
-                        showCancelDialog = true // ← abre el dialog
+                        showCancelDialog = true
                     }
                 )
             }
 
-            //Historial ──────────────────────────
             item {
                 Text(
                     "Historial de Citas",
@@ -353,8 +351,13 @@ fun PatientSelectorSection(
                 color = Color.DarkGray
             )
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                patients.forEach { patient ->
+
+            // ✅ USAR LAZYROW PARA SCROLL HORIZONTAL
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(patients) { patient ->
                     val isSelected = patient.id == selectedPatientId
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -399,7 +402,7 @@ fun PatientSelectorSection(
 @Composable
 fun CurrentAppointmentSection(
     isLoading: Boolean,
-    appointment: Appointment?, // ← Appointment en vez de AppointmentSummary
+    appointment: Appointment?,
     onSchedule: () -> Unit,
     onCancel: (String) -> Unit
 ) {
@@ -511,7 +514,7 @@ fun CurrentAppointmentSection(
 
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = formatNextDate(appointment.date.toString()), // ← LocalDate.toString() da "2026-06-10"
+                    text = formatNextDate(appointment.date.toString()),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

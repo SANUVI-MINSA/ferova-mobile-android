@@ -22,11 +22,9 @@ class AppointmentRepositoryImpl(
         lat: Double,
         lng: Double
     ): List<HealthCenter> {
-        // Agrega estos logs
         android.util.Log.d("POSTAS", "📍 loadNearbyFacilities called: lat=$lat, lng=$lng")
 
         val response = healthFacilitiesService.getNearbyFacilities(lat, lng)
-
         android.util.Log.d("POSTAS", "📍 Response code: ${response.code()}")
 
         if (!response.isSuccessful) {
@@ -38,11 +36,11 @@ class AppointmentRepositoryImpl(
         android.util.Log.d("POSTAS", "📍 Body size: ${body?.size ?: 0}")
 
         body?.forEachIndexed { index, dto ->
-            android.util.Log.d("POSTAS", "📍 [$index] ${dto.name} - ${dto.distanceKm} km - lat:${dto.latitude}, lng:${dto.longitude}")
+            android.util.Log.d("POSTAS", "📍 [$index] ${dto.name} - ${dto.distanceKm} km")
         }
 
         return body?.filter { dto ->
-            (dto.distanceKm ?: Double.MAX_VALUE) <= 100.0 // Distancia maxima (km) para la cercania (CAMBIAR SI QUIERN QUE LAS POSTAS ESTEN MAS CERCA)
+            (dto.distanceKm ?: Double.MAX_VALUE) <= 100.0
         }?.sortedBy { it.distanceKm }?.map { dto ->
             HealthCenter(
                 id = dto.id,
@@ -84,10 +82,16 @@ class AppointmentRepositoryImpl(
     }
 
     override suspend fun getPatients(): List<Patient> {
+        android.util.Log.d("APPOINTMENTS_REPO", "🔄 getPatients - Llamando a API...")
         val response = patientService.getMyPatients()
-        if (!response.isSuccessful) return emptyList()
+        android.util.Log.d("APPOINTMENTS_REPO", "📥 Response code: ${response.code()}")
 
-        return response.body()?.patients?.map { dto ->
+        if (!response.isSuccessful) {
+            android.util.Log.e("APPOINTMENTS_REPO", "❌ Error: ${response.errorBody()?.string()}")
+            return emptyList()
+        }
+
+        val patients = response.body()?.patients?.map { dto ->
             Patient(
                 id = dto.id,
                 name = dto.name,
@@ -99,6 +103,13 @@ class AppointmentRepositoryImpl(
                 motherId = ""
             )
         } ?: emptyList()
+
+        android.util.Log.d("APPOINTMENTS_REPO", "✅ Pacientes recibidos: ${patients.size}")
+        patients.forEach { patient ->
+            android.util.Log.d("APPOINTMENTS_REPO", "   - ${patient.name} (ID: ${patient.id})")
+        }
+
+        return patients
     }
 
     override suspend fun loadAvailableSlots(
@@ -134,7 +145,6 @@ class AppointmentRepositoryImpl(
 
         if (response.isSuccessful) return "OK"
 
-        // Extrae y lanza el error traducido
         val errorBody = response.errorBody()?.string()
         val rawError = try {
             JSONObject(errorBody ?: "").getString("error")
@@ -142,7 +152,7 @@ class AppointmentRepositoryImpl(
             ""
         }
 
-        throw Exception(rawError) // ← el ViewModel lo captura y traduce
+        throw Exception(rawError)
     }
 
     override suspend fun getNextAppointment(): Appointment? {
@@ -150,7 +160,7 @@ class AppointmentRepositoryImpl(
         if (!response.isSuccessful) return null
 
         return response.body()?.let { dto ->
-            if (dto.message != null) return null // "No upcoming appointments found"
+            if (dto.message != null) return null
 
             Appointment(
                 id = dto.id,
@@ -198,5 +208,4 @@ class AppointmentRepositoryImpl(
 
         throw Exception(rawError)
     }
-
 }
